@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Reservas</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <script>
+    const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+    if (!usuario || (usuario.tipo !== "admin" && usuario.tipo !== "recepcionista")) {
+      alert("Acesso não autorizado.");
+      window.location.href = "login.html";
+    }
+  </script>
+
+  <h1>Nova Reserva</h1>
+
+  <form id="formReserva">
+    <input type="text" id="cpf_cliente" placeholder="CPF do Cliente" required />
+    <input type="number" id="num_mesa" placeholder="Número da Mesa" required />
+    <input type="datetime-local" id="data_hora" required />
+    <input type="number" id="num_pessoas" placeholder="Nº de Pessoas" required />
+    <input type="text" id="status" placeholder="Status (ex: Ativa)" required />
+    <button type="submit">Reservar</button>
+  </form>
+
+  <h2>Reservas Atuais</h2>
+
+  <label for="filtroData">Filtrar por data:</label>
+  <input type="date" id="filtroData" onchange="listarReservas()" />
+
+  <table border="1">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Cliente</th>
+        <th>Número da Mesa</th>
+        <th>Data/Hora</th>
+        <th>Nº Pessoas</th>
+        <th>Status</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody id="listaReservas"></tbody>
+  </table>
+
+  <script src="js/reserva.js"></script>
+</body>
+</html>

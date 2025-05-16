@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Painel</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body { font-family: Arial; padding: 40px; text-align: center; }
+    ul { list-style: none; padding: 0; }
+    li { margin: 15px 0; }
+    a { font-size: 1.2rem; padding: 10px 20px; background: #007bff; color: #fff; text-decoration: none; border-radius: 5px; }
+    a:hover { background: #0056b3; }
+  </style>
+</head>
+<body>
+  <h1 id="boasVindas"></h1>
+  <ul id="opcoes"></ul>
+
+  <script>
+    const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+    const opcoes = document.getElementById("opcoes");
+    const boasVindas = document.getElementById("boasVindas");
+
+    if (!usuario) {
+      window.location.href = "login.html";
+    }
+
+    boasVindas.textContent = `Bem-vindo, ${usuario.tipo.toUpperCase()}`;
+
+    const rotas = {
+      admin: [
+        { nome: "Clientes", link: "cliente.html" },
+        { nome: "Mesas", link: "mesa.html" },
+        { nome: "Reservas", link: "reserva.html" },
+        { nome: "Cardápio", link: "cardapio.html" },
+        { nome: "Pedidos", link: "pedido.html" },
+        { nome: "Pagamentos", link: "pagamento.html" }
+      ],
+      recepcionista: [
+        { nome: "Clientes", link: "cliente.html" },
+        { nome: "Mesas", link: "mesa.html" },
+        { nome: "Reservas", link: "reserva.html" },
+        { nome: "Cardápio", link: "cardapio.html" },
+        { nome: "Pedidos", link: "pedido.html" },
+        { nome: "Pagamentos", link: "pagamento.html" }
+      ],
+      garcom: [
+        { nome: "Clientes", link: "cliente.html" },
+        { nome: "Mesas", link: "mesa.html" },
+        { nome: "Reservas", link: "reserva.html" },
+        { nome: "Cardápio", link: "cardapio.html" },
+        { nome: "Pedidos", link: "pedido.html" },
+        { nome: "Pagamentos", link: "pagamento.html" }
+      ],
+      financeiro: [
+        { nome: "Clientes", link: "cliente.html" },
+        { nome: "Mesas", link: "mesa.html" },
+        { nome: "Reservas", link: "reserva.html" },
+        { nome: "Cardápio", link: "cardapio.html" },
+        { nome: "Pedidos", link: "pedido.html" },
+        { nome: "Pagamentos", link: "pagamento.html" }
+      ]
+    };
+
+    rotas[usuario.tipo].forEach(r => {
+      const li = document.createElement("li");
+      li.innerHTML = `<a href="${r.link}">${r.nome}</a>`;
+      opcoes.appendChild(li);
+    });
+  </script>
+</body>
+</html>

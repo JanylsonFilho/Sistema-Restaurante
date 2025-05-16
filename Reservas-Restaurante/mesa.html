@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+ <html lang="pt-br">
+ <head>
+  <meta charset="UTF-8" />
+  <title>Cadastro de Mesas</title>
+  <link rel="stylesheet" href="css/style.css" />
+ </head>
+ <body>
+  <h1>Cadastro de Mesas</h1>
+ 
+
+  <form id="formMesa">
+  <input type="number" id="num_mesa" placeholder="Número da Mesa" required />
+  <input type="number" id="capacidade" placeholder="Capacidade" required />
+  <input type="text" id="nome_garcom" placeholder="Nome do Garçom" required />
+  <input type="text" id="disponibilidade" value="Disponível" readonly>
+  <button type="submit">Cadastrar</button>
+  </form>
+ 
+
+  <h2>Lista de Mesas</h2>
+  <table border="1">
+  <thead>
+  <tr>
+  <th>ID</th>
+  <th>Número da Mesa</th>
+  <th>Capacidade</th>
+  <th>Garçom Responsável</th>
+  <th>Disponibilidade</th>
+  <th>Ações</th>
+  </tr>
+  </thead>
+  <tbody id="listaMesas"></tbody>
+  </table>
+ 
+
+  <script src="js/mesa.js"></script>
+ </body>
+ </html>

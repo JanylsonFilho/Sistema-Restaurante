@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pagamento</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+    <script>
+        const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+        if (!usuario || usuario.tipo !== "financeiro" && usuario.tipo !== "admin") {
+        alert("Acesso não autorizado.");
+        window.location.href = "login.html";
+        }
+    </script>
+  <h1>Registrar Pagamento</h1>
+
+  <form id="formPagamento">
+    <input type="number" id="id_reserva" placeholder="ID da Reserva" required />
+    
+    <label for="forma_pagamento">Forma de Pagamento:</label>
+    <select id="forma_pagamento" required>
+      <option value="">Selecione</option>
+      <option value="Dinheiro">Dinheiro</option>
+      <option value="Cartão de Crédito">Cartão de Crédito</option>
+      <option value="Cartão de Débito">Cartão de Débito</option>
+      <option value="Pix">Pix</option>
+    </select>
+
+    <label for="status">Status:</label>
+    <select id="status" required>
+      <option value="Pendente">Pendente</option>
+      <option value="Pago">Pago</option>
+    </select>
+
+    <p id="valorTotal">Valor Total: R$ 0.00</p>
+    
+    <button type="submit">Registrar Pagamento</button>
+  </form>
+
+  <h2>Pagamentos Registrados</h2>
+  <table border="1">
+    <thead>
+      <tr>
+        <th>ID Pagamento</th><th>ID Reserva</th><th>Forma</th><th>Status</th><th>Valor</th><th>Ações</th>
+      </tr>
+    </thead>
+    <tbody id="listaPagamentos"></tbody>
+  </table>
+
+  <script src="js/pagamento.js"></script>
+</body>
+</html>

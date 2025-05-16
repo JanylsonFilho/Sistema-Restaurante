@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cardápio</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+    <script>
+        const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+        if (!usuario || usuario.tipo !== "admin") {
+        alert("Acesso não autorizado.");
+        window.location.href = "login.html";
+        }
+    </script>
+  <h1>Cadastro de Itens do Cardápio</h1>
+
+  <form id="formCardapio">
+    <input type="text" id="nome" placeholder="Nome do Item" required />
+    <input type="text" id="descricao" placeholder="Descrição" required />
+    <input type="text" id="categoria" placeholder="Categoria" required />
+    <input type="number" id="preco" placeholder="Preço" required step="0.01" />
+    <button type="submit">Adicionar</button>
+  </form>
+
+  <h2>Itens do Cardápio</h2>
+  <table border="1">
+    <thead>
+      <tr>
+        <th>ID</th><th>Nome</th><th>Descrição</th><th>Categoria</th><th>Preço</th><th>Ações</th>
+      </tr>
+    </thead>
+    <tbody id="listaCardapio"></tbody>
+  </table>
+
+  <script src="js/cardapio.js"></script>
+</body>
+</html>
