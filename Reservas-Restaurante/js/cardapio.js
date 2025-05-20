@@ -1,3 +1,5 @@
+let idItemEditando = null;
+
 document.getElementById("formCardapio").addEventListener("submit", function (e) {
   e.preventDefault();
 
@@ -8,15 +10,33 @@ document.getElementById("formCardapio").addEventListener("submit", function (e) 
 
   const itens = JSON.parse(localStorage.getItem("cardapio")) || [];
 
-  const novoItem = {
-    id_item_cardapio: Date.now(),
-    nome,
-    descricao,
-    categoria,
-    preco
-  };
+  if (idItemEditando) {
+    // Atualiza item existente
+    const index = itens.findIndex(i => i.id_item_cardapio === idItemEditando);
+    if (index !== -1) {
+      itens[index] = {
+        ...itens[index],
+        nome,
+        descricao,
+        categoria,
+        preco
+      };
+      alert("Item do cardápio atualizado com sucesso!");
+    }
+    idItemEditando = null;
+  } else {
+    // Cria novo item
+    const novoItem = {
+      id_item_cardapio: Date.now(),
+      nome,
+      descricao,
+      categoria,
+      preco
+    };
+    itens.push(novoItem);
+    alert("Item do cardápio cadastrado com sucesso!");
+  }
 
-  itens.push(novoItem);
   localStorage.setItem("cardapio", JSON.stringify(itens));
   this.reset();
   listarCardapio();
@@ -35,10 +55,26 @@ function listarCardapio() {
         <td>${item.descricao}</td>
         <td>${item.categoria}</td>
         <td>R$ ${item.preco.toFixed(2)}</td>
-        <td><button onclick="deletarItem(${item.id_item_cardapio})">Excluir</button></td>
+        <td>
+          <button onclick="deletarItem(${item.id_item_cardapio})">Excluir</button>
+          <button onclick="editarItem(${item.id_item_cardapio})">Editar</button>
+        </td>
       </tr>`;
     lista.innerHTML += row;
   });
+}
+
+function editarItem(id) {
+  const itens = JSON.parse(localStorage.getItem("cardapio")) || [];
+  const item = itens.find(i => i.id_item_cardapio === id);
+  if (item) {
+    document.getElementById("nome").value = item.nome;
+    document.getElementById("descricao").value = item.descricao;
+    document.getElementById("categoria").value = item.categoria;
+    document.getElementById("preco").value = item.preco;
+    idItemEditando = id;
+    alert("Modo de edição ativado para o item do cardápio: " + id);
+  }
 }
 
 function deletarItem(id) {

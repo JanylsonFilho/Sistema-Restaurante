@@ -1,3 +1,5 @@
+let idClienteEditando = null;
+
 document.getElementById("formCliente").addEventListener("submit", function (e) {
   e.preventDefault();
 
@@ -8,15 +10,33 @@ document.getElementById("formCliente").addEventListener("submit", function (e) {
 
   const clientes = JSON.parse(localStorage.getItem("clientes")) || [];
 
-  const novoCliente = {
-    id_cliente: Date.now(),
-    nome,
-    cpf,
-    email,
-    telefone
-  };
+  if (idClienteEditando) {
+    // Atualiza cliente existente
+    const index = clientes.findIndex(c => c.id_cliente === idClienteEditando);
+    if (index !== -1) {
+      clientes[index] = {
+        ...clientes[index],
+        nome,
+        cpf,
+        email,
+        telefone
+      };
+      alert("Cliente atualizado com sucesso!");
+    }
+    idClienteEditando = null;
+  } else {
+    // Cria novo cliente
+    const novoCliente = {
+      id_cliente: Date.now(),
+      nome,
+      cpf,
+      email,
+      telefone
+    };
+    clientes.push(novoCliente);
+    alert("Cliente cadastrado com sucesso!");
+  }
 
-  clientes.push(novoCliente);
   localStorage.setItem("clientes", JSON.stringify(clientes));
   this.reset();
   listarClientes();
@@ -37,10 +57,24 @@ function listarClientes() {
         <td>${cliente.telefone}</td>
         <td>
           <button onclick="deletarCliente(${cliente.id_cliente})">Excluir</button>
+          <button onclick="editarCliente(${cliente.id_cliente})">Editar</button>
         </td>
       </tr>`;
     lista.innerHTML += row;
   });
+}
+
+function editarCliente(id) {
+  const clientes = JSON.parse(localStorage.getItem("clientes")) || [];
+  const cliente = clientes.find(c => c.id_cliente === id);
+  if (cliente) {
+    document.getElementById("nome").value = cliente.nome;
+    document.getElementById("cpf").value = cliente.cpf;
+    document.getElementById("email").value = cliente.email;
+    document.getElementById("telefone").value = cliente.telefone;
+    idClienteEditando = id;
+    alert("Modo de edição ativado para o cliente: " + id);
+  }
 }
 
 function deletarCliente(id) {
