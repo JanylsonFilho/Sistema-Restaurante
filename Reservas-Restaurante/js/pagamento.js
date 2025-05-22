@@ -1,66 +1,54 @@
-document.getElementById("id_reserva").addEventListener("blur", atualizarValorTotal);
-
-function atualizarValorTotal() {
-  const idReserva = parseInt(document.getElementById("id_reserva").value);
-  const pedidos = JSON.parse(localStorage.getItem("pedidos")) || [];
-
-  const pedido = pedidos.find(p => p.id_reserva === idReserva);
-  const valor = pedido ? pedido.total : 0;
-
-  document.getElementById("valorTotal").textContent = `Valor Total: R$ ${valor.toFixed(2)}`;
-}
-
-document.getElementById("formPagamento").addEventListener("submit", function (e) {
-  e.preventDefault();
-
-  const id_reserva = parseInt(document.getElementById("id_reserva").value);
-  const forma_pagamento = document.getElementById("forma_pagamento").value;
-  const status = document.getElementById("status").value;
-
-  const pedidos = JSON.parse(localStorage.getItem("pedidos")) || [];
-  const pagamentoExistente = JSON.parse(localStorage.getItem("pagamentos")) || [];
-
-  // Verifica se a reserva já tem pagamento registrado
-  if (pagamentoExistente.some(p => p.id_reserva === id_reserva)) {
-    alert("Erro: essa reserva já possui um pagamento registrado.");
-    return;
-  }
-
-  const pedido = pedidos.find(p => p.id_reserva === id_reserva);
-  const valor_total = pedido ? pedido.total : 0;
-
-  const novoPagamento = {
-    id_pagamento: Date.now(),
-    id_reserva,
-    forma_pagamento,
-    status,
-    valor_total: parseFloat(valor_total.toFixed(2))
-  };
-
-  pagamentoExistente.push(novoPagamento);
-  localStorage.setItem("pagamentos", JSON.stringify(pagamentoExistente));
-  this.reset();
-  document.getElementById("valorTotal").textContent = "Valor Total: R$ 0.00";
-  listarPagamentos();
-});
+// pagamento.js com dados adicionais do pedido
 
 function listarPagamentos() {
   const lista = document.getElementById("listaPagamentos");
   const pagamentos = JSON.parse(localStorage.getItem("pagamentos")) || [];
+  const pedidos = JSON.parse(localStorage.getItem("pedidos")) || [];
+
+  const filtroData = document.getElementById("filtroDataCaixa")?.value;
+  const filtroStatus = document.getElementById("filtroStatusCaixa")?.value;
 
   lista.innerHTML = "";
 
+  let totalEsperado = 0;
+  let totalRecebido = 0;
+
   pagamentos.forEach(p => {
-    lista.innerHTML += `
-      <tr>
-        <td>${p.id_pagamento}</td>
-        <td>${p.id_reserva}</td>
-        <td>${p.forma_pagamento}</td>
-        <td>${p.status}</td>
-        <td>R$ ${p.valor_total.toFixed(2)}</td>
-        <td><button onclick="deletarPagamento(${p.id_pagamento})">Excluir</button></td>
-      </tr>`;
+    const pedido = pedidos.find(ped => ped.id_pedido === p.id_pedido);
+    if (!pedido) return;
+
+    const dataPedido = pedido.data_reserva;
+    if ((!filtroData || dataPedido === filtroData) && (!filtroStatus || p.status === filtroStatus)) {
+      const dataFormatada = pedido.data_reserva.split("-").reverse().join("/");
+      const horaFormatada = pedido.data_hora_reserva.split("T")[1];
+
+      lista.innerHTML += `
+        <tr>
+          <td>${p.id_pagamento}</td>
+          <td>${p.id_pedido}</td>
+          <td>${pedido.numero_mesa}</td>
+          <td>${pedido.nome_cliente}</td>
+          <td>${pedido.cpf_cliente}</td>
+          <td>${dataFormatada}</td>
+          <td>${horaFormatada}</td>
+          <td>${p.status}</td>
+          <td>R$ ${p.valor_total.toFixed(2)}</td>
+          <td><button onclick="deletarPagamento(${p.id_pagamento})">Excluir</button></td>
+        </tr>`;
+
+      totalEsperado += p.valor_total;
+      if (p.status === "Pago") {
+        totalRecebido += p.valor_total;
+      }
+    }
   });
+
+  document.getElementById("resumoCaixa").innerHTML = `
+    <strong>Balanço do Dia:</strong><br>
+    Data selecionada: ${filtroData ? filtroData.split("-").reverse().join("/") : "(todas)"}<br>
+    Total a receber: R$ ${totalEsperado.toFixed(2)}<br>
+    Total recebido: <span style="color:green">R$ ${totalRecebido.toFixed(2)}</span>
+  `;
 }
 
 function deletarPagamento(id) {
@@ -71,3 +59,43 @@ function deletarPagamento(id) {
 }
 
 document.addEventListener("DOMContentLoaded", listarPagamentos);
+
+
+
+function editarPagamento(id) {
+  const pagamentos = JSON.parse(localStorage.getItem("pagamentos")) || [];
+  const pagamento = pagamentos.find(p => p.id_pagamento === id);
+  if (!pagamento) return;
+
+  document.getElementById("edit_id_pagamento").value = pagamento.id_pagamento;
+  document.getElementById("edit_status").value = pagamento.status;
+  document.getElementById("edit_valor").value = pagamento.valor_total;
+  document.getElementById("formEdicao").style.display = "block";
+}
+
+
+document.getElementById("formEdicao").addEventListener("submit", function (e) {
+  e.preventDefault();
+
+  const id = parseInt(document.getElementById("edit_id_pagamento").value);
+  const status = document.getElementById("edit_status").value;
+  const valor = parseFloat(document.getElementById("edit_valor").value);
+
+  const pagamentos = JSON.parse(localStorage.getItem("pagamentos")) || [];
+  const pagamento = pagamentos.find(p => p.id_pagamento === id);
+  if (pagamento) {
+    pagamento.status = status;
+    pagamento.valor_total = valor;
+    localStorage.setItem("pagamentos", JSON.stringify(pagamentos));
+    listarPagamentos();
+    alert("Pagamento atualizado com sucesso!");
+    this.reset();
+    document.getElementById("formEdicao").style.display = "none";
+  }
+});
+
+function cancelarEdicao() {
+  document.getElementById("formEdicao").reset();
+  document.getElementById("formEdicao").style.display = "none";
+}
+

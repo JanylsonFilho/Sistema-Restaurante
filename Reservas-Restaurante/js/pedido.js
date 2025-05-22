@@ -125,20 +125,41 @@ function finalizarPedido() {
   pedido.cpf_cliente = cliente.cpf;
   pedido.data_reserva = reservaAtual.data_hora.split("T")[0];
   pedido.data_hora_reserva = reservaAtual.data_hora;
+  pedido.nome_garcom = mesaExistente.nome_garcom;
 
   const pedidos = JSON.parse(localStorage.getItem("pedidos")) || [];
+    if (idPedidoEditando) {
+      const index = pedidos.findIndex(p => p.id_pedido === idPedidoEditando);
+      if (index !== -1) {
+        pedidos[index] = { ...pedido, id_pedido: idPedidoEditando };
 
-  if (idPedidoEditando) {
-    const index = pedidos.findIndex(p => p.id_pedido === idPedidoEditando);
-    if (index !== -1) {
-      pedidos[index] = { ...pedido, id_pedido: idPedidoEditando };
-      alert("Pedido atualizado com sucesso!");
+        // 🔄 Atualiza o valor no pagamento correspondente
+        const pagamentos = JSON.parse(localStorage.getItem("pagamentos")) || [];
+        const pagamentoIndex = pagamentos.findIndex(p => p.id_pedido === idPedidoEditando);
+        if (pagamentoIndex !== -1) {
+          pagamentos[pagamentoIndex].valor_total = pedido.total;
+          localStorage.setItem("pagamentos", JSON.stringify(pagamentos));
+        }
+
+        alert("Pedido atualizado com sucesso!");
+      }
+      idPedidoEditando = null;
     }
-    idPedidoEditando = null;
-  } else {
+
+   else {
     pedido.id_pedido = Date.now();
     pedidos.push(pedido);
     alert("Pedido registrado com sucesso!");
+
+        // NOVO: Criação do pagamento ao registrar pedido
+    const pagamentos = JSON.parse(localStorage.getItem("pagamentos")) || [];
+    pagamentos.push({
+      id_pagamento: Date.now(),
+      id_pedido: pedido.id_pedido,
+      valor_total: pedido.total,
+      status: "Em Andamento"
+    });
+    localStorage.setItem("pagamentos", JSON.stringify(pagamentos));
   }
 
   localStorage.setItem("pedidos", JSON.stringify(pedidos));
@@ -163,17 +184,32 @@ function listarPedidos() {
     })
     .forEach(pedido => {
       const itens = pedido.itens.map(i =>
-        `${i.nome} x${i.quantidade} = R$ ${i.valor.toFixed(2)}`
+        `${i.nome} - R$ ${i.preco.toFixed(2)}`
       ).join("<br>");
+
+      const qtdPorItem = pedido.itens.map(i =>
+            `${i.nome}: ${i.quantidade}x`
+          ).join("<br>");
+
+      const dataFormatada = pedido.data_reserva.split("-").reverse().join("/");
+      const horaFormatada = pedido.data_hora_reserva.split("T")[1];
+
 
       const row = `
         <tr>
           <td>${pedido.id_pedido}</td>
           <td>${pedido.numero_mesa}</td>
+          <td>${pedido.nome_garcom}</td>
+
           <td>${pedido.nome_cliente}</td>
           <td>${pedido.cpf_cliente}</td>
-          <td>${pedido.data_reserva}</td>
+   
+          <td>${dataFormatada}</td>
+          <td>${horaFormatada}</td>
+
+
           <td>${itens}</td>
+          <td>${qtdPorItem}</td>
           <td>R$ ${pedido.total.toFixed(2)}</td>
           <td>${pedido.status}</td>
           <td>
@@ -232,16 +268,13 @@ function fecharComanda(idPedido) {
       localStorage.setItem("mesas", JSON.stringify(mesas));
     }
 
-    const novoPagamento = {
-      id_pagamento: Date.now(),
-      id_pedido: pedidoFechado.id_pedido,
-      valor_total: pedidoFechado.total,
-      forma_pagamento: "A Definir",
-      status: "Pendente"
-    };
+   
 
     const pagamentos = JSON.parse(localStorage.getItem("pagamentos")) || [];
-    pagamentos.push(novoPagamento);
+    const pagamento = pagamentos.find(p => p.id_pedido === pedidoFechado.id_pedido);
+        if (pagamento) {
+            pagamento.status = "Pago";
+        }
 
     localStorage.setItem("pagamentos", JSON.stringify(pagamentos));
     localStorage.setItem("reservas", JSON.stringify(reservas));

@@ -45,24 +45,37 @@ document.getElementById("formCliente").addEventListener("submit", function (e) {
 function listarClientes() {
   const lista = document.getElementById("listaClientes");
   const clientes = JSON.parse(localStorage.getItem("clientes")) || [];
+
+  const filtroNome = document.getElementById("filtroNome")?.value.toLowerCase() || "";
+  const filtroCPF = document.getElementById("filtroCPF")?.value.toLowerCase() || "";
+  const filtroEmail = document.getElementById("filtroEmail")?.value.toLowerCase() || "";
+
   lista.innerHTML = "";
 
-  clientes.forEach((cliente) => {
-    const row = `
-      <tr>
-        <td>${cliente.id_cliente}</td>
-        <td>${cliente.nome}</td>
-        <td>${cliente.cpf}</td>
-        <td>${cliente.email}</td>
-        <td>${cliente.telefone}</td>
-        <td>
-          <button onclick="deletarCliente(${cliente.id_cliente})">Excluir</button>
-          <button onclick="editarCliente(${cliente.id_cliente})">Editar</button>
-        </td>
-      </tr>`;
-    lista.innerHTML += row;
-  });
+  clientes
+    .filter(cliente =>
+      cliente.nome.toLowerCase().includes(filtroNome) &&
+      cliente.cpf.toLowerCase().includes(filtroCPF) &&
+      cliente.email.toLowerCase().includes(filtroEmail)
+    )
+    .forEach((cliente) => {
+      const row = `
+        <tr>
+          <td>${cliente.id_cliente}</td>
+          <td>${cliente.nome}</td>
+          <td>${cliente.cpf}</td>
+          <td>${cliente.email}</td>
+          <td>${cliente.telefone}</td>
+          <td>
+            <button onclick="deletarCliente(${cliente.id_cliente})">Excluir</button>
+            <button onclick="editarCliente(${cliente.id_cliente})">Editar</button>
+          </td>
+        </tr>`;
+      lista.innerHTML += row;
+    });
 }
+
+
 
 function editarCliente(id) {
   const clientes = JSON.parse(localStorage.getItem("clientes")) || [];
@@ -84,4 +97,10 @@ function deletarCliente(id) {
   listarClientes();
 }
 
-document.addEventListener("DOMContentLoaded", listarClientes);
+document.addEventListener("DOMContentLoaded", () => {
+  listarClientes();
+
+  document.getElementById("filtroNome")?.addEventListener("input", listarClientes);
+  document.getElementById("filtroCPF")?.addEventListener("input", listarClientes);
+  document.getElementById("filtroEmail")?.addEventListener("input", listarClientes);
+});

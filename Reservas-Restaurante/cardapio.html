@@ -6,13 +6,13 @@
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-    <script>
-        const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
-        if (!usuario || usuario.tipo !== "admin") {
-        alert("Acesso não autorizado.");
-        window.location.href = "login.html";
-        }
-    </script>
+  <script>
+    const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+    if (!usuario || usuario.tipo !== "admin") {
+      alert("Acesso não autorizado.");
+      window.location.href = "login.html";
+    }
+  </script>
   <h1>Cadastro de Itens do Cardápio</h1>
 
   <form id="formCardapio">
@@ -24,6 +24,15 @@
   </form>
 
   <h2>Itens do Cardápio</h2>
+
+  <div>
+    <label for="filtroNome">Filtrar por nome:</label>
+    <input type="text" id="filtroNome" oninput="listarCardapio()" />
+
+    <label for="filtroCategoria">Filtrar por categoria:</label>
+    <input type="text" id="filtroCategoria" oninput="listarCardapio()" />
+  </div>
+
   <table border="1">
     <thead>
       <tr>

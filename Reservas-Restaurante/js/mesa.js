@@ -1,55 +1,66 @@
 document.addEventListener("DOMContentLoaded", () => {
   const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
   if (!usuario) {
-  alert("Acesso não autorizado.");
-  window.location.href = "login.html";
-  return;
+    alert("Acesso não autorizado.");
+    window.location.href = "login.html";
+    return;
   }
- 
 
   // Esconde cadastro e exclusão para não-admins
   if (usuario.tipo !== "admin") {
-  const form = document.getElementById("formMesa");
-  if (form) form.style.display = "none";
+    const form = document.getElementById("formMesa");
+    if (form) form.style.display = "none";
   }
- 
 
   listarMesas();
- });
- 
+});
 
- document.getElementById("formMesa")?.addEventListener("submit", function (e) {
+let idMesaEditando = null;
+
+document.getElementById("formMesa")?.addEventListener("submit", function (e) {
   e.preventDefault();
- 
 
   const numero_mesa = document.getElementById("num_mesa").value;
   const capacidade = parseInt(document.getElementById("capacidade").value);
   const nome_garcom = document.getElementById("nome_garcom").value;
   const disponibilidade = document.getElementById("disponibilidade").value;
- 
 
   const mesas = JSON.parse(localStorage.getItem("mesas")) || [];
- 
 
-  const novaMesa = {
-  id_mesa: Date.now(),
-  num_mesa: numero_mesa,
-  capacidade,
-  nome_garcom,
-  disponibilidade
-  };
- 
+  if (idMesaEditando) {
+    const index = mesas.findIndex(m => m.id_mesa === idMesaEditando);
+    if (index !== -1) {
+      mesas[index] = {
+        ...mesas[index],
+        num_mesa: numero_mesa,
+        capacidade,
+        nome_garcom,
+        disponibilidade
+      };
+      alert("Mesa atualizada com sucesso!");
+    }
+    idMesaEditando = null;
+  } else {
+    const novaMesa = {
+      id_mesa: Date.now(),
+      num_mesa: numero_mesa,
+      capacidade,
+      nome_garcom,
+      disponibilidade
+    };
+    mesas.push(novaMesa);
+    alert("Mesa cadastrada com sucesso!");
+  }
 
-  mesas.push(novaMesa);
   localStorage.setItem("mesas", JSON.stringify(mesas));
   this.reset();
   listarMesas();
- });
- 
+});
 
-let idMesaEditando = null;
+document.getElementById("filtroMesaForm")?.addEventListener("input", listarMesas);
 
-
+document.getElementById("filtroDisponibilidade")?.addEventListener("change", listarMesas);
+document.getElementById("filtroCapacidade")?.addEventListener("input", listarMesas);
 
 function listarMesas() {
   const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
@@ -57,7 +68,16 @@ function listarMesas() {
   const mesas = JSON.parse(localStorage.getItem("mesas")) || [];
   lista.innerHTML = "";
 
-  mesas.forEach((mesa) => {
+  const filtroGarcom = document.getElementById("filtroMesaForm")?.value.toLowerCase() || "";
+  const filtroDisp = document.getElementById("filtroDisponibilidade")?.value || "";
+  const filtroCapacidade = parseInt(document.getElementById("filtroCapacidade")?.value) || 0;
+
+  mesas.filter(mesa => {
+    const garcomOK = mesa.nome_garcom.toLowerCase().includes(filtroGarcom);
+    const dispOK = !filtroDisp || mesa.disponibilidade === filtroDisp;
+    const capOK = !filtroCapacidade || mesa.capacidade >= filtroCapacidade;
+    return garcomOK && dispOK && capOK;
+  }).forEach((mesa) => {
     let botoes = "";
     if (usuario.tipo === "admin") {
       botoes = `
@@ -92,53 +112,9 @@ function editarMesa(id) {
   }
 }
 
-document.getElementById("formMesa")?.addEventListener("submit", function (e) {
-  e.preventDefault();
-
-  const numero_mesa = document.getElementById("num_mesa").value;
-  const capacidade = parseInt(document.getElementById("capacidade").value);
-  const nome_garcom = document.getElementById("nome_garcom").value;
-  const disponibilidade = document.getElementById("disponibilidade").value;
-
-  const mesas = JSON.parse(localStorage.getItem("mesas")) || [];
-
-  if (idMesaEditando) {
-    // Atualiza mesa existente
-    const index = mesas.findIndex(m => m.id_mesa === idMesaEditando);
-    if (index !== -1) {
-      mesas[index] = {
-        ...mesas[index],
-        num_mesa: numero_mesa,
-        capacidade,
-        nome_garcom,
-        disponibilidade
-      };
-      alert("Mesa atualizada com sucesso!");
-    }
-    idMesaEditando = null;
-  } else {
-    // Cria nova mesa
-    const novaMesa = {
-      id_mesa: Date.now(),
-      num_mesa: numero_mesa,
-      capacidade,
-      nome_garcom,
-      disponibilidade
-    };
-    mesas.push(novaMesa);
-    alert("Mesa cadastrada com sucesso!");
-  }
-
-  localStorage.setItem("mesas", JSON.stringify(mesas));
-  this.reset();
-  listarMesas();
-});
-
-
-
- function deletarMesa(id) {
+function deletarMesa(id) {
   let mesas = JSON.parse(localStorage.getItem("mesas")) || [];
   mesas = mesas.filter((m) => m.id_mesa !== id);
   localStorage.setItem("mesas", JSON.stringify(mesas));
   listarMesas();
- }
+}

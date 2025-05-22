@@ -45,23 +45,31 @@ document.getElementById("formCardapio").addEventListener("submit", function (e) 
 function listarCardapio() {
   const lista = document.getElementById("listaCardapio");
   const itens = JSON.parse(localStorage.getItem("cardapio")) || [];
+  const filtroNome = document.getElementById("filtroNome")?.value.toLowerCase() || "";
+  const filtroCategoria = document.getElementById("filtroCategoria")?.value.toLowerCase() || "";
   lista.innerHTML = "";
 
-  itens.forEach((item) => {
-    const row = `
-      <tr>
-        <td>${item.id_item_cardapio}</td>
-        <td>${item.nome}</td>
-        <td>${item.descricao}</td>
-        <td>${item.categoria}</td>
-        <td>R$ ${item.preco.toFixed(2)}</td>
-        <td>
-          <button onclick="deletarItem(${item.id_item_cardapio})">Excluir</button>
-          <button onclick="editarItem(${item.id_item_cardapio})">Editar</button>
-        </td>
-      </tr>`;
-    lista.innerHTML += row;
-  });
+  itens
+    .filter(item => {
+      const nomeOK = !filtroNome || item.nome.toLowerCase().includes(filtroNome);
+      const categoriaOK = !filtroCategoria || item.categoria.toLowerCase().includes(filtroCategoria);
+      return nomeOK && categoriaOK;
+    })
+    .forEach((item) => {
+      const row = `
+        <tr>
+          <td>${item.id_item_cardapio}</td>
+          <td>${item.nome}</td>
+          <td>${item.descricao}</td>
+          <td>${item.categoria}</td>
+          <td>R$ ${item.preco.toFixed(2)}</td>
+          <td>
+            <button onclick="deletarItem(${item.id_item_cardapio})">Excluir</button>
+            <button onclick="editarItem(${item.id_item_cardapio})">Editar</button>
+          </td>
+        </tr>`;
+      lista.innerHTML += row;
+    });
 }
 
 function editarItem(id) {

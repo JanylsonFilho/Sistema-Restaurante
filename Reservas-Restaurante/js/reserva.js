@@ -5,9 +5,13 @@ document.getElementById("formReserva").addEventListener("submit", function (e) {
 
   const cpf_cliente = document.getElementById("cpf_cliente").value;
   const num_mesa = parseInt(document.getElementById("num_mesa").value);
-  const data_hora = document.getElementById("data_hora").value;
+  const data = document.getElementById("data_reserva").value; // yyyy-mm-dd
+  const hora = document.getElementById("hora_reserva").value; // HH:mm
   const num_pessoas = parseInt(document.getElementById("num_pessoas").value);
   const status = document.getElementById("status").value;
+
+  // Monta data_hora no padrão ISO
+  const data_hora = data && hora ? `${data}T${hora}` : "";
 
   const clientes = JSON.parse(localStorage.getItem("clientes")) || [];
   const mesas = JSON.parse(localStorage.getItem("mesas")) || [];
@@ -25,6 +29,12 @@ document.getElementById("formReserva").addEventListener("submit", function (e) {
     return;
   }
 
+  // EXCEÇÃO: número de pessoas não pode ser maior que a capacidade da mesa
+  if (num_pessoas > mesa.capacidade) {
+    alert("Erro: O número de pessoas excede a capacidade da mesa selecionada!");
+    return;
+  }
+
   if (idReservaEditando) {
     // Atualiza reserva existente (apenas se ativa)
     const index = reservas.findIndex(r => r.id_reserva === idReservaEditando && r.status.toLowerCase() === "ativa");
@@ -33,6 +43,7 @@ document.getElementById("formReserva").addEventListener("submit", function (e) {
         ...reservas[index],
         id_cliente: cliente.id_cliente,
         nome_cliente: cliente.nome,
+        cpf_cliente: cliente.cpf,
         id_mesa: mesa.id_mesa,
         num_mesa: mesa.num_mesa,
         data_hora,
@@ -56,6 +67,7 @@ document.getElementById("formReserva").addEventListener("submit", function (e) {
       id_reserva: Date.now(),
       id_cliente: cliente.id_cliente,
       nome_cliente: cliente.nome,
+      cpf_cliente: cliente.cpf,
       id_mesa: mesa.id_mesa,
       num_mesa: mesa.num_mesa,
       data_hora,
@@ -81,25 +93,44 @@ document.getElementById("formReserva").addEventListener("submit", function (e) {
 function listarReservas() {
   const lista = document.getElementById("listaReservas");
   const reservas = JSON.parse(localStorage.getItem("reservas")) || [];
-  const filtroData = document.getElementById("filtroData")?.value;
+
+  const filtroNome = document.getElementById("filtroNome")?.value.toLowerCase() || "";
+  const filtroCpf = document.getElementById("filtroCpf")?.value.toLowerCase() || "";
+  const filtroData = document.getElementById("filtroData")?.value || "";
+  const filtroHora = document.getElementById("filtroHora")?.value || "";
+  const filtroStatus = document.getElementById("filtroStatus")?.value.toLowerCase() || "";
+
   lista.innerHTML = "";
 
   reservas
     .filter(reserva => {
-      if (!filtroData) return true;
-      const dataReserva = reserva.data_hora.split("T")[0];
-      return dataReserva === filtroData;
+      const nomeOK = !filtroNome || (reserva.nome_cliente && reserva.nome_cliente.toLowerCase().includes(filtroNome));
+      const cpfOK = !filtroCpf || (reserva.cpf_cliente && reserva.cpf_cliente.toLowerCase().includes(filtroCpf));
+      const dataOK = !filtroData || (reserva.data_hora && reserva.data_hora.split("T")[0] === filtroData);
+      const horaOK = !filtroHora || (reserva.data_hora && reserva.data_hora.split("T")[1] === filtroHora);
+      const statusOK = !filtroStatus || (reserva.status && reserva.status.toLowerCase().includes(filtroStatus));
+      return nomeOK && cpfOK && dataOK && horaOK && statusOK;
     })
     .forEach(reserva => {
       const editarBtn = reserva.status.toLowerCase() === "ativa"
         ? `<button onclick="editarReserva(${reserva.id_reserva})">Editar</button>`
         : "";
+
+      const dataFormatada = reserva.data_hora && reserva.data_hora.includes("T")
+        ? reserva.data_hora.split("T")[0].split("-").reverse().join("/")
+        : "";
+      const horaFormatada = reserva.data_hora && reserva.data_hora.includes("T")
+        ? reserva.data_hora.split("T")[1]
+        : "";
+
       const row = `
         <tr>
           <td>${reserva.id_reserva}</td>
           <td>${reserva.nome_cliente}</td>
+          <td>${reserva.cpf_cliente}</td>
           <td>${reserva.num_mesa}</td>
-          <td>${reserva.data_hora}</td>
+          <td>${dataFormatada}</td>
+          <td>${horaFormatada}</td>
           <td>${reserva.num_pessoas}</td>
           <td>${reserva.status}</td>
           <td>
@@ -117,7 +148,14 @@ function editarReserva(id) {
   if (reserva) {
     document.getElementById("cpf_cliente").value = reserva.cpf_cliente || "";
     document.getElementById("num_mesa").value = reserva.num_mesa;
-    document.getElementById("data_hora").value = reserva.data_hora;
+    if (reserva.data_hora && reserva.data_hora.includes("T")) {
+      const [data, hora] = reserva.data_hora.split("T");
+      document.getElementById("data_reserva").value = data;
+      document.getElementById("hora_reserva").value = hora;
+    } else {
+      document.getElementById("data_reserva").value = "";
+      document.getElementById("hora_reserva").value = "";
+    }
     document.getElementById("num_pessoas").value = reserva.num_pessoas;
     document.getElementById("status").value = reserva.status;
     idReservaEditando = id;
@@ -125,7 +163,6 @@ function editarReserva(id) {
   }
 }
 
-// ...existing deletarReserva e DOMContentLoaded...
 function deletarReserva(id) {
   let reservas = JSON.parse(localStorage.getItem("reservas")) || [];
   reservas = reservas.filter(r => r.id_reserva !== id);

@@ -19,7 +19,8 @@
   <form id="formReserva">
     <input type="text" id="cpf_cliente" placeholder="CPF do Cliente" required />
     <input type="number" id="num_mesa" placeholder="Número da Mesa" required />
-    <input type="datetime-local" id="data_hora" required />
+    <input type="date" id="data_reserva" required />
+    <input type="time" id="hora_reserva" required />
     <input type="number" id="num_pessoas" placeholder="Nº de Pessoas" required />
     <input type="text" id="status" placeholder="Status (ex: Ativa)" required />
     <button type="submit">Reservar</button>
@@ -27,16 +28,32 @@
 
   <h2>Reservas Atuais</h2>
 
-  <label for="filtroData">Filtrar por data:</label>
-  <input type="date" id="filtroData" onchange="listarReservas()" />
+  <div>
+    <label for="filtroNome">Filtrar por nome:</label>
+    <input type="text" id="filtroNome" oninput="listarReservas()" />
+
+    <label for="filtroCpf">Filtrar por CPF:</label>
+    <input type="text" id="filtroCpf" oninput="listarReservas()" />
+
+    <label for="filtroData">Filtrar por data:</label>
+    <input type="date" id="filtroData" onchange="listarReservas()" />
+
+    <label for="filtroHora">Filtrar por hora:</label>
+    <input type="time" id="filtroHora" onchange="listarReservas()" />
+
+    <label for="filtroStatus">Filtrar por status:</label>
+    <input type="text" id="filtroStatus" oninput="listarReservas()" />
+  </div>
 
   <table border="1">
     <thead>
       <tr>
         <th>ID</th>
         <th>Cliente</th>
+        <th>CPF</th>
         <th>Número da Mesa</th>
-        <th>Data/Hora</th>
+        <th>Data</th>
+        <th>Hora</th>
         <th>Nº Pessoas</th>
         <th>Status</th>
         <th>Ações</th>
