@@ -217,10 +217,125 @@ function listarPedidos() {
             ${pedido.status === "Aberto" ? `
               <button onclick="fecharComanda(${pedido.id_pedido})">Pagar</button>
               <button onclick="editarPedido(${pedido.id_pedido})">Editar</button>` : ""}
+            ${pedido.status === "Finalizado" ? `
+              <button onclick="reabrirComanda(${pedido.id_pedido})">Reabrir</button>` : ""}
           </td>
         </tr>`;
       lista.innerHTML += row;
     });
+}
+
+function reabrirComanda(idPedido) {
+  if(!confirm("Deseja reabrir a comanda?")) {
+    return;
+  }
+  const pedidos = JSON.parse(localStorage.getItem("pedidos")) || [];
+  const mesas = JSON.parse(localStorage.getItem("mesas")) || [];
+  const reservas = JSON.parse(localStorage.getItem("reservas")) || [];
+  const pagamentos = JSON.parse(localStorage.getItem("pagamentos")) || [];
+
+  //encontrar o pedido 
+  const pedidoIndex = pedidos.findIndex(p => Number(p.id_pedido) === idPedido);
+  if(pedidoIndex === -1){
+    alert("Pedido não encontrado.");
+    return;
+  }
+
+  // atualizar status do pedido 
+  pedidos[pedidoIndex].status = "Aberto"; 
+
+  //encontra e atualiza a mesa 
+
+  const numeroMesa = pedidos[pedidoIndex].numero_mesa;
+  const mesaIndex = mesas.findIndex(m =>String(m.num_mesa) === String(numeroMesa));
+  if(mesaIndex !== -1){
+    mesas[mesaIndex].disponibilidade = "Indisponível";
+  }
+
+  // encontra e atualiza a reserva 
+
+  const reservaIndex = reservas.findIndex(r =>
+    String(r.num_mesa) === String(numeroMesa) &&
+    r.data_hora === pedidos[pedidoIndex].data_hora_reserva && 
+    r.status.toLowerCase() === "finalizada"
+  );
+  if(reservaIndex !== -1){
+    reservas[reservaIndex].status = "Ativa";
+  }
+  /*
+  
+  else {
+    // Se não encontrar a reserva finalizada, pode ser necessário criar uma nova
+    const clienteInfo = {
+      id_cliente: null,
+      nome: pedidos[pedidoIndex].nome_cliente,
+      cpf: pedidos[pedidoIndex].cpf_cliente
+    };
+    
+    // Buscar o ID do cliente pelo CPF
+    const clientes = JSON.parse(localStorage.getItem("clientes")) || [];
+    const cliente = clientes.find(c => c.cpf === clienteInfo.cpf);
+    if (cliente) {
+      clienteInfo.id_cliente = cliente.id_cliente;
+    }
+    
+    // Verificar se já existe uma reserva ativa para esta mesa e horário
+    const reservaExistente = reservas.some(r => 
+      String(r.num_mesa) === String(numeroMesa) && 
+      r.data_hora === pedidos[pedidoIndex].data_hora_reserva &&
+      r.status.toLowerCase() === "ativa"
+    );
+    
+    if (!reservaExistente && clienteInfo.id_cliente) {
+      // Criar nova reserva
+      const novaReserva = {
+        id_reserva: Date.now(),
+        id_cliente: clienteInfo.id_cliente,
+        nome_cliente: clienteInfo.nome,
+        cpf_cliente: clienteInfo.cpf,
+        id_mesa: mesas[mesaIndex]?.id_mesa || null,
+        num_mesa: numeroMesa,
+        data_hora: pedidos[pedidoIndex].data_hora_reserva,
+        num_pessoas: 1, // Valor padrão, pode ser ajustado se necessário
+        status: "Ativa"
+      };
+      
+      reservas.push(novaReserva);
+    }
+  }
+
+  */
+  // encontra e atualiza o pagamento
+  const pagamentoIndex = pagamentos.findIndex(p => p.id_pedido === idPedido);
+  if(pagamentoIndex !== -1){
+    pagamentos[pagamentoIndex].status = "Em Andamento";
+    //pagamentos[pagamentoIndex].valor_total = pedidos[pedidoIndex].total;
+  }
+
+  /* 
+  
+  else {
+    // Se não encontrar o pagamento, criar um novo
+    pagamentos.push({
+      id_pagamento: Date.now(),
+      id_pedido: idPedido,
+      valor_total: pedidos[pedidoIndex].total,
+      status: "Em Andamento"
+    });
+  }
+
+  */
+
+  // salvar as alteraçoes feitas 
+  localStorage.setItem("pedidos", JSON.stringify(pedidos));
+  localStorage.setItem("mesas", JSON.stringify(mesas));
+  localStorage.setItem("reservas", JSON.stringify(reservas));
+  localStorage.setItem("pagamentos", JSON.stringify(pagamentos));
+
+  // atualizar a interface 
+  listarPedidos();
+    alert("Comanda reaberta com sucesso!");
+
 }
 
 function deletarPedido(id) {
