@@ -5,13 +5,10 @@ document.getElementById("formReserva").addEventListener("submit", function (e) {
 
   const cpf_cliente = document.getElementById("cpf_cliente").value;
   const num_mesa = parseInt(document.getElementById("num_mesa").value);
-  const data = document.getElementById("data_reserva").value; // yyyy-mm-dd
-  const hora = document.getElementById("hora_reserva").value; // HH:mm
+  const data_reserva = document.getElementById("data_reserva").value; // yyyy-mm-dd
+  const hora_reserva = document.getElementById("hora_reserva").value; // HH:mm
   const num_pessoas = parseInt(document.getElementById("num_pessoas").value);
   const status = document.getElementById("status").value;
-
-  // Monta data_hora no padrão ISO
-  const data_hora = data && hora ? `${data}T${hora}` : "";
 
   const clientes = JSON.parse(localStorage.getItem("clientes")) || [];
   const mesas = JSON.parse(localStorage.getItem("mesas")) || [];
@@ -46,7 +43,8 @@ document.getElementById("formReserva").addEventListener("submit", function (e) {
         cpf_cliente: cliente.cpf,
         id_mesa: mesa.id_mesa,
         num_mesa: mesa.num_mesa,
-        data_hora,
+        data_reserva,
+        hora_reserva,
         num_pessoas,
         status
       };
@@ -56,7 +54,9 @@ document.getElementById("formReserva").addEventListener("submit", function (e) {
   } else {
     // Verifica conflito antes de criar nova reserva
     const conflito = reservas.some(reserva =>
-      reserva.id_mesa === mesa.id_mesa && reserva.data_hora === data_hora
+      reserva.id_mesa === mesa.id_mesa &&
+      reserva.data_reserva === data_reserva &&
+      reserva.hora_reserva === hora_reserva
     );
     if (conflito) {
       alert("Erro: A mesa já está reservada nesse horário.");
@@ -70,7 +70,8 @@ document.getElementById("formReserva").addEventListener("submit", function (e) {
       cpf_cliente: cliente.cpf,
       id_mesa: mesa.id_mesa,
       num_mesa: mesa.num_mesa,
-      data_hora,
+      data_reserva,
+      hora_reserva,
       num_pessoas,
       status
     };
@@ -106,8 +107,8 @@ function listarReservas() {
     .filter(reserva => {
       const nomeOK = !filtroNome || (reserva.nome_cliente && reserva.nome_cliente.toLowerCase().includes(filtroNome));
       const cpfOK = !filtroCpf || (reserva.cpf_cliente && reserva.cpf_cliente.toLowerCase().includes(filtroCpf));
-      const dataOK = !filtroData || (reserva.data_hora && reserva.data_hora.split("T")[0] === filtroData);
-      const horaOK = !filtroHora || (reserva.data_hora && reserva.data_hora.split("T")[1] === filtroHora);
+      const dataOK = !filtroData || (reserva.data_reserva === filtroData);
+      const horaOK = !filtroHora || (reserva.hora_reserva === filtroHora);
       const statusOK = !filtroStatus || (reserva.status && reserva.status.toLowerCase().includes(filtroStatus));
       return nomeOK && cpfOK && dataOK && horaOK && statusOK;
     })
@@ -116,12 +117,10 @@ function listarReservas() {
         ? `<button onclick="editarReserva(${reserva.id_reserva})">Editar</button>`
         : "";
 
-      const dataFormatada = reserva.data_hora && reserva.data_hora.includes("T")
-        ? reserva.data_hora.split("T")[0].split("-").reverse().join("/")
+      const dataFormatada = reserva.data_reserva
+        ? reserva.data_reserva.split("-").reverse().join("/")
         : "";
-      const horaFormatada = reserva.data_hora && reserva.data_hora.includes("T")
-        ? reserva.data_hora.split("T")[1]
-        : "";
+      const horaFormatada = reserva.hora_reserva || "";
 
       const row = `
         <tr>
@@ -148,14 +147,8 @@ function editarReserva(id) {
   if (reserva) {
     document.getElementById("cpf_cliente").value = reserva.cpf_cliente || "";
     document.getElementById("num_mesa").value = reserva.num_mesa;
-    if (reserva.data_hora && reserva.data_hora.includes("T")) {
-      const [data, hora] = reserva.data_hora.split("T");
-      document.getElementById("data_reserva").value = data;
-      document.getElementById("hora_reserva").value = hora;
-    } else {
-      document.getElementById("data_reserva").value = "";
-      document.getElementById("hora_reserva").value = "";
-    }
+    document.getElementById("data_reserva").value = reserva.data_reserva || "";
+    document.getElementById("hora_reserva").value = reserva.hora_reserva || "";
     document.getElementById("num_pessoas").value = reserva.num_pessoas;
     document.getElementById("status").value = reserva.status;
     idReservaEditando = id;

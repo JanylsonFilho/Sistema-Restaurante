@@ -7,7 +7,8 @@ let pedido = {
   nome_cliente: "",
   cpf_cliente: "",
   data_reserva: "",
-  data_hora_reserva: ""
+  hora_reserva: "",
+  nome_garcom: ""
 };
 
 let idPedidoEditando = null;
@@ -93,6 +94,11 @@ function atualizarPedido() {
 
 function finalizarPedido() {
   const numeroMesa = parseInt(document.getElementById("numero_mesa").value);
+  const mesas = JSON.parse(localStorage.getItem("mesas")) || [];
+  const reservas = JSON.parse(localStorage.getItem("reservas")) || [];
+  const clientes = JSON.parse(localStorage.getItem("clientes")) || [];
+  const pedidos = JSON.parse(localStorage.getItem("pedidos")) || [];
+
   const mesaExistente = mesas.find(mesa => Number(mesa.num_mesa) === numeroMesa);
 
   if (!mesaExistente) {
@@ -123,35 +129,32 @@ function finalizarPedido() {
   pedido.status = "Aberto";
   pedido.nome_cliente = cliente.nome;
   pedido.cpf_cliente = cliente.cpf;
-  pedido.data_reserva = reservaAtual.data_hora.split("T")[0];
-  pedido.data_hora_reserva = reservaAtual.data_hora;
+  pedido.data_reserva = reservaAtual.data_reserva;
+  pedido.hora_reserva = reservaAtual.hora_reserva;
   pedido.nome_garcom = mesaExistente.nome_garcom;
 
-  const pedidos = JSON.parse(localStorage.getItem("pedidos")) || [];
-    if (idPedidoEditando) {
-      const index = pedidos.findIndex(p => p.id_pedido === idPedidoEditando);
-      if (index !== -1) {
-        pedidos[index] = { ...pedido, id_pedido: idPedidoEditando };
+  if (idPedidoEditando) {
+    const index = pedidos.findIndex(p => p.id_pedido === idPedidoEditando);
+    if (index !== -1) {
+      pedidos[index] = { ...pedido, id_pedido: idPedidoEditando };
 
-        // 🔄 Atualiza o valor no pagamento correspondente
-        const pagamentos = JSON.parse(localStorage.getItem("pagamentos")) || [];
-        const pagamentoIndex = pagamentos.findIndex(p => p.id_pedido === idPedidoEditando);
-        if (pagamentoIndex !== -1) {
-          pagamentos[pagamentoIndex].valor_total = pedido.total;
-          localStorage.setItem("pagamentos", JSON.stringify(pagamentos));
-        }
-
-        alert("Pedido atualizado com sucesso!");
+      // Atualiza o valor no pagamento correspondente
+      const pagamentos = JSON.parse(localStorage.getItem("pagamentos")) || [];
+      const pagamentoIndex = pagamentos.findIndex(p => p.id_pedido === idPedidoEditando);
+      if (pagamentoIndex !== -1) {
+        pagamentos[pagamentoIndex].valor_total = pedido.total;
+        localStorage.setItem("pagamentos", JSON.stringify(pagamentos));
       }
-      idPedidoEditando = null;
-    }
 
-   else {
+      alert("Pedido atualizado com sucesso!");
+    }
+    idPedidoEditando = null;
+  } else {
     pedido.id_pedido = Date.now();
     pedidos.push(pedido);
     alert("Pedido registrado com sucesso!");
 
-        // NOVO: Criação do pagamento ao registrar pedido
+    // NOVO: Criação do pagamento ao registrar pedido
     const pagamentos = JSON.parse(localStorage.getItem("pagamentos")) || [];
     pagamentos.push({
       id_pagamento: Date.now(),
@@ -163,7 +166,7 @@ function finalizarPedido() {
   }
 
   localStorage.setItem("pedidos", JSON.stringify(pedidos));
-  pedido = { id_pedido: Date.now(), numero_mesa: null, itens: [], total: 0, status: "Aberto", nome_cliente: "", cpf_cliente: "", data_reserva: "", data_hora_reserva: "" };
+  pedido = { id_pedido: Date.now(), numero_mesa: null, itens: [], total: 0, status: "Aberto", nome_cliente: "", cpf_cliente: "", data_reserva: "", hora_reserva: "", nome_garcom: "" };
   document.getElementById("numero_mesa").value = "";
   atualizarPedido();
   listarPedidos();
@@ -183,33 +186,18 @@ function listarPedidos() {
       return dataOk && mesaOk;
     })
     .forEach(pedido => {
-      const itens = pedido.itens.map(i =>
-        `${i.nome} - R$ ${i.preco.toFixed(2)}`
-      ).join("<br>");
-
-      const qtdPorItem = pedido.itens.map(i =>
-            `${i.nome}: ${i.quantidade}x`
-          ).join("<br>");
-
-      const dataFormatada = pedido.data_reserva.split("-").reverse().join("/");
-      const horaFormatada = pedido.data_hora_reserva.split("T")[1];
-
+      const dataFormatada = pedido.data_reserva ? pedido.data_reserva.split("-").reverse().join("/") : "";
+      const horaFormatada = pedido.hora_reserva || "";
 
       const row = `
         <tr>
           <td>${pedido.id_pedido}</td>
           <td>${pedido.numero_mesa}</td>
           <td>${pedido.nome_garcom}</td>
-
           <td>${pedido.nome_cliente}</td>
           <td>${pedido.cpf_cliente}</td>
-   
           <td>${dataFormatada}</td>
           <td>${horaFormatada}</td>
-
-
-          <td>${itens}</td>
-          <td>${qtdPorItem}</td>
           <td>R$ ${pedido.total.toFixed(2)}</td>
           <td>${pedido.status}</td>
           <td>
@@ -219,10 +207,15 @@ function listarPedidos() {
               <button onclick="editarPedido(${pedido.id_pedido})">Editar</button>` : ""}
             ${pedido.status === "Finalizado" ? `
               <button onclick="reabrirComanda(${pedido.id_pedido})">Reabrir</button>` : ""}
+            <button onclick="verDetalhes(${pedido.id_pedido})">Ver Detalhes</button>
           </td>
         </tr>`;
       lista.innerHTML += row;
     });
+}
+
+function verDetalhes(id) {
+  window.location.href = "detalhes_pedido.html?id=" + id;
 }
 
 function reabrirComanda(idPedido) {
@@ -245,7 +238,6 @@ function reabrirComanda(idPedido) {
   pedidos[pedidoIndex].status = "Aberto"; 
 
   //encontra e atualiza a mesa 
-
   const numeroMesa = pedidos[pedidoIndex].numero_mesa;
   const mesaIndex = mesas.findIndex(m =>String(m.num_mesa) === String(numeroMesa));
   if(mesaIndex !== -1){
@@ -253,78 +245,21 @@ function reabrirComanda(idPedido) {
   }
 
   // encontra e atualiza a reserva 
-
   const reservaIndex = reservas.findIndex(r =>
     String(r.num_mesa) === String(numeroMesa) &&
-    r.data_hora === pedidos[pedidoIndex].data_hora_reserva && 
+    r.data_reserva === pedidos[pedidoIndex].data_reserva &&
+    r.hora_reserva === pedidos[pedidoIndex].hora_reserva &&
     r.status.toLowerCase() === "finalizada"
   );
   if(reservaIndex !== -1){
     reservas[reservaIndex].status = "Ativa";
   }
-  /*
-  
-  else {
-    // Se não encontrar a reserva finalizada, pode ser necessário criar uma nova
-    const clienteInfo = {
-      id_cliente: null,
-      nome: pedidos[pedidoIndex].nome_cliente,
-      cpf: pedidos[pedidoIndex].cpf_cliente
-    };
-    
-    // Buscar o ID do cliente pelo CPF
-    const clientes = JSON.parse(localStorage.getItem("clientes")) || [];
-    const cliente = clientes.find(c => c.cpf === clienteInfo.cpf);
-    if (cliente) {
-      clienteInfo.id_cliente = cliente.id_cliente;
-    }
-    
-    // Verificar se já existe uma reserva ativa para esta mesa e horário
-    const reservaExistente = reservas.some(r => 
-      String(r.num_mesa) === String(numeroMesa) && 
-      r.data_hora === pedidos[pedidoIndex].data_hora_reserva &&
-      r.status.toLowerCase() === "ativa"
-    );
-    
-    if (!reservaExistente && clienteInfo.id_cliente) {
-      // Criar nova reserva
-      const novaReserva = {
-        id_reserva: Date.now(),
-        id_cliente: clienteInfo.id_cliente,
-        nome_cliente: clienteInfo.nome,
-        cpf_cliente: clienteInfo.cpf,
-        id_mesa: mesas[mesaIndex]?.id_mesa || null,
-        num_mesa: numeroMesa,
-        data_hora: pedidos[pedidoIndex].data_hora_reserva,
-        num_pessoas: 1, // Valor padrão, pode ser ajustado se necessário
-        status: "Ativa"
-      };
-      
-      reservas.push(novaReserva);
-    }
-  }
 
-  */
   // encontra e atualiza o pagamento
   const pagamentoIndex = pagamentos.findIndex(p => p.id_pedido === idPedido);
   if(pagamentoIndex !== -1){
     pagamentos[pagamentoIndex].status = "Em Andamento";
-    //pagamentos[pagamentoIndex].valor_total = pedidos[pedidoIndex].total;
   }
-
-  /* 
-  
-  else {
-    // Se não encontrar o pagamento, criar um novo
-    pagamentos.push({
-      id_pagamento: Date.now(),
-      id_pedido: idPedido,
-      valor_total: pedidos[pedidoIndex].total,
-      status: "Em Andamento"
-    });
-  }
-
-  */
 
   // salvar as alteraçoes feitas 
   localStorage.setItem("pedidos", JSON.stringify(pedidos));
@@ -334,8 +269,7 @@ function reabrirComanda(idPedido) {
 
   // atualizar a interface 
   listarPedidos();
-    alert("Comanda reaberta com sucesso!");
-
+  alert("Comanda reaberta com sucesso!");
 }
 
 function deletarPedido(id) {
@@ -357,18 +291,19 @@ function editarPedido(id) {
   }
 }
 
-
 function fecharComanda(idPedido) {
   const pedidos = JSON.parse(localStorage.getItem("pedidos")) || [];
   const reservas = JSON.parse(localStorage.getItem("reservas")) || [];
+  const mesas = JSON.parse(localStorage.getItem("mesas")) || [];
   const pedidoFechado = pedidos.find(p => p.id_pedido === idPedido);
   if (pedidoFechado) {
     pedidoFechado.status = "Finalizado";
 
-    // Finaliza reserva correspondente (mesmo id_mesa e data_hora completa)
+    // Finaliza reserva correspondente (mesmo id_mesa, data e hora)
     const reservaIndex = reservas.findIndex(r =>
       String(r.num_mesa) === String(pedidoFechado.numero_mesa) &&
-      r.data_hora === pedidoFechado.data_hora_reserva &&
+      r.data_reserva === pedidoFechado.data_reserva &&
+      r.hora_reserva === pedidoFechado.hora_reserva &&
       r.status.toLowerCase() === "ativa"
     );
 
@@ -383,13 +318,11 @@ function fecharComanda(idPedido) {
       localStorage.setItem("mesas", JSON.stringify(mesas));
     }
 
-   
-
     const pagamentos = JSON.parse(localStorage.getItem("pagamentos")) || [];
     const pagamento = pagamentos.find(p => p.id_pedido === pedidoFechado.id_pedido);
-        if (pagamento) {
-            pagamento.status = "Pago";
-        }
+    if (pagamento) {
+      pagamento.status = "Pago";
+    }
 
     localStorage.setItem("pagamentos", JSON.stringify(pagamentos));
     localStorage.setItem("reservas", JSON.stringify(reservas));
