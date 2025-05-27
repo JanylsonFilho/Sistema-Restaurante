@@ -4,6 +4,7 @@ class reservaController{
     async getAllReservas(req,res) {
         try{
             const reservas = await reservaService.getAllReservas()
+            console.log("Dados de reservas enviados para o front-end:", reservas);
             res.json({
                 success:true,
                 data:reservas,
@@ -103,6 +104,7 @@ class reservaController{
         try {
             const filters = req.query
             const reservas = await reservaService.searchReservas(filters)
+            console.log("Dados de reservas filtrados enviados para o front-end:", reservas);
             res.json({
                 success:true,
                 data:reservas,

@@ -62,7 +62,7 @@ class pedidoService {
       }
 
       // Verificar se existe reserva ativa para a mesa
-      const reservas = await reservaDAO.findByMesaAndStatus(pedidoData.numero_mesa, "Ativa")
+      const reservas = await reservaDAO.findByMesaDataStatus(pedidoData.numero_mesa , pedidoData.data_reserva , "Ativa")
       if (reservas.length === 0) {
         throw new Error("Nenhuma reserva ativa encontrada para essa mesa")
       }
@@ -127,7 +127,7 @@ class pedidoService {
     }
   }
 
-  async updatePedido(id, pedidoData) {
+   async updatePedido(id, pedidoData) {
     try {
       // Buscar pedido atual
       const pedidoAtual = await this.getPedidoById(id);
@@ -138,6 +138,30 @@ class pedidoService {
         throw new Error(`Dados inválidos: ${errors.join(", ")}`);
       }
 
+      // Verificar se a mesa existe
+      const mesa = await mesaDAO.findByNumero(pedidoData.numero_mesa);
+      if (!mesa) {
+          throw new Error("Mesa não encontrada");
+      }
+
+      // MODIFICADO: Se a mesa ou data da reserva foram alterados, validar a reserva ativa
+      if (
+          pedidoData.numero_mesa !== pedidoAtual.numero_mesa ||
+          pedidoData.data_reserva !== pedidoAtual.data_reserva
+      ) {
+          const reservas = await reservaDAO.findByMesaDataStatus( // Usar a nova função
+              pedidoData.numero_mesa,
+              pedidoData.data_reserva,
+              "Ativa"
+          );
+          if (reservas.length === 0) {
+              throw new Error("Nenhuma reserva ativa encontrada para a mesa e data especificadas.");
+          }
+          // Opcional: Você pode querer validar se a reserva encontrada é a mesma que estava
+          // associada ao pedido original ou se faz sentido trocá-la.
+      }
+
+
       // Atualizar campos obrigatórios que não vieram no JSON
       const pedidoParaAtualizar = {
         ...pedidoAtual,
@@ -146,14 +170,39 @@ class pedidoService {
 
       // Se atualizar itens, calcule o novo total e atualize os itens
       if (pedidoData.itens && pedidoData.itens.length > 0) {
-        // ... (sua lógica de atualizar itens e total)
-        // Atualize pedidoParaAtualizar.total = novoTotal
+        let novoTotalCalculado = 0;
+        // Primeiro, exclua os itens antigos
+        await itemPedidoDAO.deleteByPedido(id); // Excluir todos os itens antigos do pedido
+
+        // Em seguida, adicione os novos itens e calcule o novo total
+        for (const item of pedidoData.itens) {
+            const itemCardapio = await cardapioDAO.findById(item.id_item_cardapio);
+            if (!itemCardapio) {
+                throw new Error(`Item do cardápio não encontrado: ${item.id_item_cardapio}`);
+            }
+            const subtotal = parseFloat(itemCardapio.preco) * item.quantidade;
+            await itemPedidoDAO.create({
+                id_pedido: id,
+                id_item_cardapio: item.id_item_cardapio,
+                quantidade: item.quantidade,
+                preco_unitario: parseFloat(itemCardapio.preco),
+                subtotal: subtotal,
+            });
+            novoTotalCalculado += subtotal;
+        }
+        pedidoParaAtualizar.total = novoTotalCalculado; // Atualize o total do pedido
       }
 
-      // Atualize o pedido no banco
-      const updated = await pedidoDAO.update(id, pedidoParaAtualizar);
-      if (!updated) {
-        throw new Error("Falha ao atualizar pedido");
+      // Atualizar o pagamento associado ao pedido
+      const pagamentoExistente = await pagamentoDAO.findByPedido(id);
+      if (pagamentoExistente) {
+          await pagamentoDAO.updateValorByPedido(id, pedidoParaAtualizar.total);
+      } else {
+          await pagamentoDAO.create({
+              id_pedido: id,
+              valor_total: pedidoParaAtualizar.total,
+              status: "Em Andamento",
+          });
       }
 
       return await this.getPedidoComItens(id);
@@ -190,7 +239,7 @@ class pedidoService {
     }
   }
 
-  async fecharComanda(id) {
+async fecharComanda(id) {
     try {
       const pedido = await this.getPedidoById(id)
 
@@ -201,11 +250,15 @@ class pedidoService {
       // Atualizar status do pedido
       await pedidoDAO.updateStatus(id, "Finalizado")
 
-      // Finalizar reserva correspondente (usando data_reserva e hora_reserva separados)
-      await reservaDAO.updateStatusByMesaDataHora(
+      // MODIFICADO: Finalizar reserva correspondente (usando apenas data_reserva)
+      // Seu banco de dados tem hora_reserva na Reserva, então podemos deixar o backend
+      // que fechar a comanda buscar a reserva pela data e hora que estão no pedido.
+      // Se a reserva é por dia, a hora aqui pode ser ignorada no serviço,
+      // mas é importante que o pedido ainda carregue a hora da reserva original.
+      await reservaDAO.updateStatusByMesaDataHora( // Mantido para consistência com o banco
         pedido.numero_mesa,
         pedido.data_reserva,
-        pedido.hora_reserva,
+        pedido.hora_reserva, // Usando a hora da reserva original do pedido
         "Finalizada",
       )
 
@@ -235,8 +288,13 @@ class pedidoService {
       // Atualizar status do pedido
       await pedidoDAO.updateStatus(id, "Aberto")
 
-      // Reativar reserva correspondente (usando data_reserva e hora_reserva separados)
-      await reservaDAO.updateStatusByMesaDataHora(pedido.numero_mesa, pedido.data_reserva, pedido.hora_reserva, "Ativa")
+      // MODIFICADO: Reativar reserva correspondente (usando apenas data_reserva)
+      await reservaDAO.updateStatusByMesaDataHora( // Mantido para consistência com o banco
+        pedido.numero_mesa,
+        pedido.data_reserva,
+        pedido.hora_reserva, // Usando a hora da reserva original do pedido
+        "Ativa"
+      )
 
       // Marcar mesa como indisponível
       const mesa = await mesaDAO.findByNumero(pedido.numero_mesa)

@@ -1,125 +1,161 @@
+const API_BASE_URL = "http://localhost:3000/api";
 let idReservaEditando = null;
 
-document.getElementById("formReserva").addEventListener("submit", function (e) {
+document.addEventListener("DOMContentLoaded", async () => {
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (!usuario || (usuario.tipo !== "admin" && usuario.tipo !== "recepcionista")) {
+    alert("Acesso não autorizado.");
+    window.location.href = "login.html";
+  }
+  listarReservas();
+});
+
+// Funções de conversão de data
+function formatarDataParaExibicao(dataOriginal) { // dataOriginal agora pode ser um objeto Date ou string
+  if (!dataOriginal) return "";
+
+  let dateObj;
+
+  // Tenta criar um objeto Date. Se já for um, usa ele. Se for string, tenta converter.
+  if (dataOriginal instanceof Date) {
+    dateObj = dataOriginal;
+  } else if (typeof dataOriginal === 'string') {
+    // Para strings como "YYYY-MM-DDTHH:mm:ss.sssZ" ou "YYYY-MM-DD"
+    // Usamos o construtor Date diretamente, que costuma ser robusto para ISO strings.
+    dateObj = new Date(dataOriginal);
+  } else {
+    // Caso o tipo não seja nem Date nem string
+    return "Formato Inválido";
+  }
+
+  // Verifica se o objeto Date é válido
+  if (isNaN(dateObj.getTime())) {
+    // Se a conversão falhou (ex: string de data malformada), tenta parsear manualmente YYYY-MM-DD
+    if (typeof dataOriginal === 'string' && dataOriginal.includes('-')) {
+        const partes = dataOriginal.split('-');
+        if (partes.length === 3) {
+            const ano = parseInt(partes[0]);
+            const mes = parseInt(partes[1]) - 1; // Mês no JavaScript é 0-indexado
+            const dia = parseInt(partes[2]);
+            dateObj = new Date(ano, mes, dia);
+            if (isNaN(dateObj.getTime())) {
+                 return "Data Inválida";
+            }
+        } else {
+            return "Data Inválida";
+        }
+    } else {
+        return "Data Inválida";
+    }
+  }
+
+  // Formata o objeto Date para o formato brasileiro
+  return dateObj.toLocaleDateString('pt-BR');
+}
+
+function formatarDataParaEnvio(dataBr) { // De DD/MM/YYYY (do formulário, se precisar) para YYYY-MM-DD (para o banco)
+  if (!dataBr) return "";
+  const partes = dataBr.split('/');
+  if (partes.length === 3) {
+    return `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
+  }
+  return dataBr; // Se já estiver no formato YYYY-MM-DD, retorna como está.
+                 // Este caso é importante se o input type="date" já fornece YYYY-MM-DD
+}
+
+
+document.getElementById("formReserva").addEventListener("submit", async function (e) {
   e.preventDefault();
 
   const cpf_cliente = document.getElementById("cpf_cliente").value;
   const num_mesa = parseInt(document.getElementById("num_mesa").value);
-  const data_reserva = document.getElementById("data_reserva").value; // yyyy-mm-dd
-  const hora_reserva = document.getElementById("hora_reserva").value; // HH:mm
+  // O input type="date" já retorna a data no formato YYYY-MM-DD.
+  // Não precisamos formatar para envio para o back-end, pois já está no formato certo.
+  const data_reserva = document.getElementById("data_reserva").value; // Já está YYYY-MM-DD
+  const hora_reserva = document.getElementById("hora_reserva").value;
   const num_pessoas = parseInt(document.getElementById("num_pessoas").value);
   const status = document.getElementById("status").value;
 
-  const clientes = JSON.parse(localStorage.getItem("clientes")) || [];
-  const mesas = JSON.parse(localStorage.getItem("mesas")) || [];
-  const reservas = JSON.parse(localStorage.getItem("reservas")) || [];
+  const reservaData = {
+    cpf_cliente,
+    num_mesa,
+    data_reserva, // Já está no formato YYYY-MM-DD
+    hora_reserva,
+    num_pessoas,
+    status,
+  };
 
-  const cliente = clientes.find(c => c.cpf === cpf_cliente);
-  if (!cliente) {
-    alert("Cliente não encontrado.");
-    return;
-  }
-
-  const mesa = mesas.find(m => parseInt(m.num_mesa) === num_mesa);
-  if (!mesa) {
-    alert("Mesa não encontrada.");
-    return;
-  }
-
-  // EXCEÇÃO: número de pessoas não pode ser maior que a capacidade da mesa
-  if (num_pessoas > mesa.capacidade) {
-    alert("Erro: O número de pessoas excede a capacidade da mesa selecionada!");
-    return;
-  }
+  let url = `${API_BASE_URL}/reservas`;
+  let method = "POST";
+  let successMessage = "Reserva criada com sucesso!";
+  let errorMessage = "Erro ao criar reserva:";
 
   if (idReservaEditando) {
-    // Atualiza reserva existente (apenas se ativa)
-    const index = reservas.findIndex(r => r.id_reserva === idReservaEditando && r.status.toLowerCase() === "ativa");
-    if (index !== -1) {
-      reservas[index] = {
-        ...reservas[index],
-        id_cliente: cliente.id_cliente,
-        nome_cliente: cliente.nome,
-        cpf_cliente: cliente.cpf,
-        id_mesa: mesa.id_mesa,
-        num_mesa: mesa.num_mesa,
-        data_reserva,
-        hora_reserva,
-        num_pessoas,
-        status
-      };
-      alert("Reserva atualizada com sucesso!");
-    }
-    idReservaEditando = null;
-  } else {
-    // Verifica conflito antes de criar nova reserva
-    const conflito = reservas.some(reserva =>
-      reserva.id_mesa === mesa.id_mesa &&
-      reserva.data_reserva === data_reserva &&
-      reserva.hora_reserva === hora_reserva
-    );
-    if (conflito) {
-      alert("Erro: A mesa já está reservada nesse horário.");
-      return;
-    }
-
-    const novaReserva = {
-      id_reserva: Date.now(),
-      id_cliente: cliente.id_cliente,
-      nome_cliente: cliente.nome,
-      cpf_cliente: cliente.cpf,
-      id_mesa: mesa.id_mesa,
-      num_mesa: mesa.num_mesa,
-      data_reserva,
-      hora_reserva,
-      num_pessoas,
-      status
-    };
-
-    reservas.push(novaReserva);
-
-    // Atualiza disponibilidade da mesa para "Indisponível"
-    const mesaIndex = mesas.findIndex(m => m.id_mesa === mesa.id_mesa);
-    if (mesaIndex !== -1) {
-      mesas[mesaIndex].disponibilidade = "Indisponível";
-      localStorage.setItem("mesas", JSON.stringify(mesas));
-    }
+    url = `${API_BASE_URL}/reservas/${idReservaEditando}`;
+    method = "PUT";
+    successMessage = "Reserva atualizada com sucesso!";
+    errorMessage = "Erro ao atualizar reserva:";
   }
 
-  localStorage.setItem("reservas", JSON.stringify(reservas));
-  this.reset();
-  listarReservas();
+  try {
+    const response = await fetch(url, {
+      method: method,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(reservaData),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || `Erro HTTP! status: ${response.status}`);
+    }
+
+    alert(successMessage);
+    this.reset();
+    idReservaEditando = null;
+    listarReservas();
+  } catch (error) {
+    console.error(errorMessage, error);
+    alert(`${errorMessage} ${error.message}`);
+  }
 });
 
-function listarReservas() {
+async function listarReservas() {
   const lista = document.getElementById("listaReservas");
-  const reservas = JSON.parse(localStorage.getItem("reservas")) || [];
+  lista.innerHTML = "";
 
   const filtroNome = document.getElementById("filtroNome")?.value.toLowerCase() || "";
   const filtroCpf = document.getElementById("filtroCpf")?.value.toLowerCase() || "";
-  const filtroData = document.getElementById("filtroData")?.value || "";
+  const filtroData = document.getElementById("filtroData")?.value || ""; // Este já é YYYY-MM-DD
   const filtroHora = document.getElementById("filtroHora")?.value || "";
   const filtroStatus = document.getElementById("filtroStatus")?.value.toLowerCase() || "";
 
-  lista.innerHTML = "";
+  let url = `${API_BASE_URL}/reservas/search?`;
+  if (filtroNome) url += `nome_cliente=${filtroNome}&`;
+  if (filtroCpf) url += `cpf_cliente=${filtroCpf}&`;
+  if (filtroData) url += `data_reserva=${filtroData}&`; // Envia YYYY-MM-DD para o back-end
+  if (filtroHora) url += `hora_reserva=${filtroHora}&`;
+  if (filtroStatus) url += `status=${filtroStatus}&`;
+  url = url.slice(0, -1);
 
-  reservas
-    .filter(reserva => {
-      const nomeOK = !filtroNome || (reserva.nome_cliente && reserva.nome_cliente.toLowerCase().includes(filtroNome));
-      const cpfOK = !filtroCpf || (reserva.cpf_cliente && reserva.cpf_cliente.toLowerCase().includes(filtroCpf));
-      const dataOK = !filtroData || (reserva.data_reserva === filtroData);
-      const horaOK = !filtroHora || (reserva.hora_reserva === filtroHora);
-      const statusOK = !filtroStatus || (reserva.status && reserva.status.toLowerCase().includes(filtroStatus));
-      return nomeOK && cpfOK && dataOK && horaOK && statusOK;
-    })
-    .forEach(reserva => {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `Erro HTTP! status: ${response.status}`);
+    }
+    const data = await response.json();
+    const reservas = data.data;
+
+    reservas.forEach((reserva) => {
       const editarBtn = reserva.status.toLowerCase() === "ativa"
         ? `<button onclick="editarReserva(${reserva.id_reserva})">Editar</button>`
         : "";
 
-      const dataFormatada = reserva.data_reserva
-        ? reserva.data_reserva.split("-").reverse().join("/")
-        : "";
+      // Usando a nova função para formatar a data para exibição
+      const dataFormatada = formatarDataParaExibicao(reserva.data_reserva);
       const horaFormatada = reserva.hora_reserva || "";
 
       const row = `
@@ -139,28 +175,66 @@ function listarReservas() {
         </tr>`;
       lista.innerHTML += row;
     });
-}
-
-function editarReserva(id) {
-  const reservas = JSON.parse(localStorage.getItem("reservas")) || [];
-  const reserva = reservas.find(r => r.id_reserva === id && r.status.toLowerCase() === "ativa");
-  if (reserva) {
-    document.getElementById("cpf_cliente").value = reserva.cpf_cliente || "";
-    document.getElementById("num_mesa").value = reserva.num_mesa;
-    document.getElementById("data_reserva").value = reserva.data_reserva || "";
-    document.getElementById("hora_reserva").value = reserva.hora_reserva || "";
-    document.getElementById("num_pessoas").value = reserva.num_pessoas;
-    document.getElementById("status").value = reserva.status;
-    idReservaEditando = id;
-    alert("Modo de edição ativado para a reserva: " + id);
+  } catch (error) {
+    console.error("Erro ao listar reservas:", error);
+    alert("Erro ao carregar reservas: " + error.message);
   }
 }
 
-function deletarReserva(id) {
-  let reservas = JSON.parse(localStorage.getItem("reservas")) || [];
-  reservas = reservas.filter(r => r.id_reserva !== id);
-  localStorage.setItem("reservas", JSON.stringify(reservas));
-  listarReservas();
+async function editarReserva(id) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/reservas/${id}`);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `Erro HTTP! status: ${response.status}`);
+    }
+    const data = await response.json();
+    const reserva = data.data;
+
+    if (reserva) {
+      document.getElementById("cpf_cliente").value = reserva.cpf_cliente || "";
+      document.getElementById("num_mesa").value = reserva.num_mesa;
+      // A data do back-end (YYYY-MM-DD) é diretamente atribuível ao input type="date"
+      document.getElementById("data_reserva").value = reserva.data_reserva || "";
+      document.getElementById("hora_reserva").value = reserva.hora_reserva || "";
+      document.getElementById("num_pessoas").value = reserva.num_pessoas;
+      document.getElementById("status").value = reserva.status;
+
+      idReservaEditando = id;
+      alert("Modo de edição ativado para a reserva: " + id);
+    }
+  } catch (error) {
+    console.error("Erro ao carregar dados da reserva para edição:", error);
+    alert("Erro ao carregar dados da reserva para edição: " + error.message);
+  }
 }
 
-document.addEventListener("DOMContentLoaded", listarReservas);
+async function deletarReserva(id) {
+  if (!confirm("Tem certeza que deseja excluir esta reserva?")) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/reservas/${id}`, {
+      method: "DELETE",
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || `Erro HTTP! status: ${response.status}`);
+    }
+
+    alert(result.message || "Reserva excluída com sucesso!");
+    listarReservas();
+  } catch (error) {
+    console.error("Erro ao deletar reserva:", error);
+    alert("Erro ao deletar reserva: " + error.message);
+  }
+}
+
+document.getElementById("filtroNome")?.addEventListener("input", listarReservas);
+document.getElementById("filtroCpf")?.addEventListener("input", listarReservas);
+document.getElementById("filtroData")?.addEventListener("change", listarReservas);
+document.getElementById("filtroHora")?.addEventListener("change", listarReservas);
+document.getElementById("filtroStatus")?.addEventListener("input", listarReservas);

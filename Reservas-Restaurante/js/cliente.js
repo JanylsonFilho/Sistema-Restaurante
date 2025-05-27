@@ -1,6 +1,7 @@
+const API_BASE_URL = "http://localhost:3000/api"; // Verifique a porta do seu back-end
 let idClienteEditando = null;
 
-document.getElementById("formCliente").addEventListener("submit", function (e) {
+document.getElementById("formCliente").addEventListener("submit", async function (e) {
   e.preventDefault();
 
   const nome = document.getElementById("nome").value;
@@ -8,57 +9,74 @@ document.getElementById("formCliente").addEventListener("submit", function (e) {
   const email = document.getElementById("email").value;
   const telefone = document.getElementById("telefone").value;
 
-  const clientes = JSON.parse(localStorage.getItem("clientes")) || [];
+  const clienteData = {
+    nome,
+    cpf,
+    email,
+    telefone,
+  };
+
+  let url = `${API_BASE_URL}/clientes`;
+  let method = "POST";
+  let successMessage = "Cliente cadastrado com sucesso!";
+  let errorMessage = "Erro ao cadastrar cliente:";
 
   if (idClienteEditando) {
-    // Atualiza cliente existente
-    const index = clientes.findIndex(c => c.id_cliente === idClienteEditando);
-    if (index !== -1) {
-      clientes[index] = {
-        ...clientes[index],
-        nome,
-        cpf,
-        email,
-        telefone
-      };
-      alert("Cliente atualizado com sucesso!");
-    }
-    idClienteEditando = null;
-  } else {
-    // Cria novo cliente
-    const novoCliente = {
-      id_cliente: Date.now(),
-      nome,
-      cpf,
-      email,
-      telefone
-    };
-    clientes.push(novoCliente);
-    alert("Cliente cadastrado com sucesso!");
+    url = `${API_BASE_URL}/clientes/${idClienteEditando}`;
+    method = "PUT";
+    successMessage = "Cliente atualizado com sucesso!";
+    errorMessage = "Erro ao atualizar cliente:";
   }
 
-  localStorage.setItem("clientes", JSON.stringify(clientes));
-  this.reset();
-  listarClientes();
+  try {
+    const response = await fetch(url, {
+      method: method,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(clienteData),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || `Erro HTTP! status: ${response.status}`);
+    }
+
+    alert(successMessage);
+    this.reset();
+    idClienteEditando = null;
+    listarClientes();
+  } catch (error) {
+    console.error(errorMessage, error);
+    alert(`${errorMessage} ${error.message}`);
+  }
 });
 
-function listarClientes() {
+async function listarClientes() {
   const lista = document.getElementById("listaClientes");
-  const clientes = JSON.parse(localStorage.getItem("clientes")) || [];
+  lista.innerHTML = "";
 
   const filtroNome = document.getElementById("filtroNome")?.value.toLowerCase() || "";
   const filtroCPF = document.getElementById("filtroCPF")?.value.toLowerCase() || "";
   const filtroEmail = document.getElementById("filtroEmail")?.value.toLowerCase() || "";
 
-  lista.innerHTML = "";
+  let url = `${API_BASE_URL}/clientes/search?`;
+  if (filtroNome) url += `nome=${filtroNome}&`;
+  if (filtroCPF) url += `cpf=${filtroCPF}&`;
+  if (filtroEmail) url += `email=${filtroEmail}&`;
+  url = url.slice(0, -1);
 
-  clientes
-    .filter(cliente =>
-      cliente.nome.toLowerCase().includes(filtroNome) &&
-      cliente.cpf.toLowerCase().includes(filtroCPF) &&
-      cliente.email.toLowerCase().includes(filtroEmail)
-    )
-    .forEach((cliente) => {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `Erro HTTP! status: ${response.status}`);
+    }
+    const data = await response.json();
+    const clientes = data.data;
+
+    clientes.forEach((cliente) => {
       const row = `
         <tr>
           <td>${cliente.id_cliente}</td>
@@ -73,28 +91,58 @@ function listarClientes() {
         </tr>`;
       lista.innerHTML += row;
     });
-}
-
-
-
-function editarCliente(id) {
-  const clientes = JSON.parse(localStorage.getItem("clientes")) || [];
-  const cliente = clientes.find(c => c.id_cliente === id);
-  if (cliente) {
-    document.getElementById("nome").value = cliente.nome;
-    document.getElementById("cpf").value = cliente.cpf;
-    document.getElementById("email").value = cliente.email;
-    document.getElementById("telefone").value = cliente.telefone;
-    idClienteEditando = id;
-    alert("Modo de edição ativado para o cliente: " + id);
+  } catch (error) {
+    console.error("Erro ao listar clientes:", error);
+    alert("Erro ao carregar clientes: " + error.message);
   }
 }
 
-function deletarCliente(id) {
-  let clientes = JSON.parse(localStorage.getItem("clientes")) || [];
-  clientes = clientes.filter((c) => c.id_cliente !== id);
-  localStorage.setItem("clientes", JSON.stringify(clientes));
-  listarClientes();
+async function editarCliente(id) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/clientes/${id}`);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `Erro HTTP! status: ${response.status}`);
+    }
+    const data = await response.json();
+    const cliente = data.data;
+
+    if (cliente) {
+      document.getElementById("nome").value = cliente.nome;
+      document.getElementById("cpf").value = cliente.cpf;
+      document.getElementById("email").value = cliente.email;
+      document.getElementById("telefone").value = cliente.telefone;
+      idClienteEditando = id;
+      alert("Modo de edição ativado para o cliente: " + cliente.nome);
+    }
+  } catch (error) {
+    console.error("Erro ao carregar dados do cliente para edição:", error);
+    alert("Erro ao carregar dados do cliente para edição: " + error.message);
+  }
+}
+
+async function deletarCliente(id) {
+  if (!confirm("Tem certeza que deseja excluir este cliente?")) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/clientes/${id}`, {
+      method: "DELETE",
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || `Erro HTTP! status: ${response.status}`);
+    }
+
+    alert(result.message || "Cliente excluído com sucesso!");
+    listarClientes();
+  } catch (error) {
+    console.error("Erro ao deletar cliente:", error);
+    alert("Erro ao deletar cliente: " + error.message);
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {

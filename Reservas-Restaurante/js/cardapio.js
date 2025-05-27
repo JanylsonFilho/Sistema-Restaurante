@@ -1,6 +1,28 @@
+const API_BASE_URL = "http://localhost:3000/api";
 let idItemEditando = null;
 
-document.getElementById("formCardapio").addEventListener("submit", function (e) {
+// Criar uma função de inicialização para ser chamada apenas uma vez
+function initializeCardapioPage() {
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (!usuario || usuario.tipo !== "admin") {
+    alert("Acesso não autorizado.");
+    window.location.href = "login.html";
+    return;
+  }
+
+  listarCardapio(); // Chama listarCardapio uma vez ao carregar a página
+
+  // Adicionar event listeners APENAS UMA VEZ
+  document.getElementById("formCardapio")?.addEventListener("submit", handleFormSubmit);
+  document.getElementById("filtroNome")?.addEventListener("input", listarCardapio);
+  document.getElementById("filtroCategoria")?.addEventListener("input", listarCardapio);
+}
+
+// Chamar a função de inicialização quando o DOM estiver completamente carregado
+document.addEventListener("DOMContentLoaded", initializeCardapioPage);
+
+
+async function handleFormSubmit(e) {
   e.preventDefault();
 
   const nome = document.getElementById("nome").value;
@@ -8,61 +30,80 @@ document.getElementById("formCardapio").addEventListener("submit", function (e) 
   const categoria = document.getElementById("categoria").value;
   const preco = parseFloat(document.getElementById("preco").value);
 
-  const itens = JSON.parse(localStorage.getItem("cardapio")) || [];
+  const itemData = {
+    nome,
+    descricao,
+    categoria,
+    preco,
+  };
+
+  let url = `${API_BASE_URL}/cardapio`;
+  let method = "POST";
+  let successMessage = "Item do cardápio cadastrado com sucesso!";
+  let errorMessage = "Erro ao cadastrar item do cardápio:";
 
   if (idItemEditando) {
-    // Atualiza item existente
-    const index = itens.findIndex(i => i.id_item_cardapio === idItemEditando);
-    if (index !== -1) {
-      itens[index] = {
-        ...itens[index],
-        nome,
-        descricao,
-        categoria,
-        preco
-      };
-      alert("Item do cardápio atualizado com sucesso!");
-    }
-    idItemEditando = null;
-  } else {
-    // Cria novo item
-    const novoItem = {
-      id_item_cardapio: Date.now(),
-      nome,
-      descricao,
-      categoria,
-      preco
-    };
-    itens.push(novoItem);
-    alert("Item do cardápio cadastrado com sucesso!");
+    url = `${API_BASE_URL}/cardapio/${idItemEditando}`;
+    method = "PUT";
+    successMessage = "Item do cardápio atualizado com sucesso!";
+    errorMessage = "Erro ao atualizar item do cardápio:";
   }
 
-  localStorage.setItem("cardapio", JSON.stringify(itens));
-  this.reset();
-  listarCardapio();
-});
+  try {
+    const response = await fetch(url, {
+      method: method,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(itemData),
+    });
 
-function listarCardapio() {
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || `Erro HTTP! status: ${response.status}`);
+    }
+
+    alert(successMessage);
+    this.reset();
+    idItemEditando = null;
+    listarCardapio(); // Recarrega a lista
+  } catch (error) {
+    console.error(errorMessage, error);
+    alert(`${errorMessage} ${error.message}`);
+  }
+}
+
+async function listarCardapio() {
+  console.log("Chamada à listarCardapio()"); // Manter este log para verificar
   const lista = document.getElementById("listaCardapio");
-  const itens = JSON.parse(localStorage.getItem("cardapio")) || [];
+  lista.innerHTML = ""; // Limpa a lista antes de preencher
+
   const filtroNome = document.getElementById("filtroNome")?.value.toLowerCase() || "";
   const filtroCategoria = document.getElementById("filtroCategoria")?.value.toLowerCase() || "";
-  lista.innerHTML = "";
 
-  itens
-    .filter(item => {
-      const nomeOK = !filtroNome || item.nome.toLowerCase().includes(filtroNome);
-      const categoriaOK = !filtroCategoria || item.categoria.toLowerCase().includes(filtroCategoria);
-      return nomeOK && categoriaOK;
-    })
-    .forEach((item) => {
+  let url = `${API_BASE_URL}/cardapio/search?`;
+  if (filtroNome) url += `nome=${filtroNome}&`;
+  if (filtroCategoria) url += `categoria=${filtroCategoria}&`;
+  url = url.slice(0, -1);
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `Erro HTTP! status: ${response.status}`);
+    }
+    const data = await response.json();
+    const itens = data.data;
+
+    itens.forEach((item) => {
       const row = `
         <tr>
           <td>${item.id_item_cardapio}</td>
           <td>${item.nome}</td>
           <td>${item.descricao}</td>
           <td>${item.categoria}</td>
-          <td>R$ ${item.preco.toFixed(2)}</td>
+          <td>R$ ${parseFloat(item.preco).toFixed(2)}</td>
           <td>
             <button onclick="deletarItem(${item.id_item_cardapio})">Excluir</button>
             <button onclick="editarItem(${item.id_item_cardapio})">Editar</button>
@@ -70,26 +111,56 @@ function listarCardapio() {
         </tr>`;
       lista.innerHTML += row;
     });
-}
-
-function editarItem(id) {
-  const itens = JSON.parse(localStorage.getItem("cardapio")) || [];
-  const item = itens.find(i => i.id_item_cardapio === id);
-  if (item) {
-    document.getElementById("nome").value = item.nome;
-    document.getElementById("descricao").value = item.descricao;
-    document.getElementById("categoria").value = item.categoria;
-    document.getElementById("preco").value = item.preco;
-    idItemEditando = id;
-    alert("Modo de edição ativado para o item do cardápio: " + id);
+  } catch (error) {
+    console.error("Erro ao listar itens do cardápio:", error);
+    alert("Erro ao carregar itens do cardápio: " + error.message);
   }
 }
 
-function deletarItem(id) {
-  let itens = JSON.parse(localStorage.getItem("cardapio")) || [];
-  itens = itens.filter((i) => i.id_item_cardapio !== id);
-  localStorage.setItem("cardapio", JSON.stringify(itens));
-  listarCardapio();
+async function editarItem(id) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/cardapio/${id}`);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `Erro HTTP! status: ${response.status}`);
+    }
+    const data = await response.json();
+    const item = data.data;
+
+    if (item) {
+      document.getElementById("nome").value = item.nome;
+      document.getElementById("descricao").value = item.descricao;
+      document.getElementById("categoria").value = item.categoria;
+      document.getElementById("preco").value = item.preco; // Não converta para float aqui
+      idItemEditando = id;
+      alert("Modo de edição ativado para o item do cardápio: " + id);
+    }
+  } catch (error) {
+    console.error("Erro ao carregar dados do item para edição:", error);
+    alert("Erro ao carregar dados do item para edição: " + error.message);
+  }
 }
 
-document.addEventListener("DOMContentLoaded", listarCardapio);
+async function deletarItem(id) {
+  if (!confirm("Tem certeza que deseja excluir este item do cardápio?")) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/cardapio/${id}`, {
+      method: "DELETE",
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || `Erro HTTP! status: ${response.status}`);
+    }
+
+    alert(result.message || "Item do cardápio excluído com sucesso!");
+    listarCardapio();
+  } catch (error) {
+    console.error("Erro ao deletar item do cardápio:", error);
+    alert("Erro ao deletar item do cardápio: " + error.message);
+  }
+}

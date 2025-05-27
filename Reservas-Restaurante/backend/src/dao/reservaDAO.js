@@ -66,8 +66,8 @@ class reservaDAO {
     return rows
   }
 
-  async findByMesaAndStatus(num_mesa, status) {
-    const [rows] = await pool.execute("SELECT * FROM Reserva WHERE num_mesa = ? AND status = ?", [num_mesa, status])
+  async findByMesaDataStatus(num_mesa, status) {
+    const [rows] = await pool.execute("SELECT * FROM Reserva WHERE num_mesa = ? AND  data_reserva=? AND status = ?", [num_mesa, data_reserva ,status])
     return rows
   }
 

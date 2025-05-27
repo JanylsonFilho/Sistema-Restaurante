@@ -38,6 +38,7 @@
 
   
   <input type="number" id="numero_mesa" placeholder="Número da Mesa" required />
+  <input type="date" id="data_reserva_pedido" required />
   
  
 
@@ -52,10 +53,10 @@
 
   <button onclick="finalizarPedido()">Finalizar Pedido</button>
   <label for="filtroData">Filtrar por data:</label>
-  <input type="date" id="filtroData" onchange="listarPedidos()" />
+  <input type="date" id="filtroData"  />
 
   <label for="filtroMesa">Filtrar por mesa:</label>
-  <input type="number" id="filtroMesa" placeholder="Número da mesa" onchange="listarPedidos()" />
+  <input type="number" id="filtroMesa" placeholder="Número da mesa"  />
 
   <h2>Pedidos Registrados</h2>
   <table border="1">
