@@ -1,6 +1,6 @@
 const { pool } = require("../config/database")
 
-class ClienteDAO {
+class clienteDAO {
   async findAll() {
     const [rows] = await pool.execute("SELECT * FROM Cliente ORDER BY nome")
     return rows
@@ -67,4 +67,4 @@ class ClienteDAO {
   }
 }
 
-module.exports = new ClienteDAO()
+module.exports = new clienteDAO()

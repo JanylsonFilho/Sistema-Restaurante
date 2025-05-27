@@ -48,6 +48,17 @@ class itemPedidoDAO {
     const [rows] = await pool.execute("SELECT * FROM Item_Pedido WHERE id_item_pedido = ?", [id])
     return rows[0]
   }
+
+   async existePedidoEmAberto(id_item_cardapio) {
+    const [rows] = await pool.execute(
+      `SELECT 1 FROM Item_Pedido ip
+       INNER JOIN Pedido p ON ip.id_pedido = p.id_pedido
+       WHERE ip.id_item_cardapio = ? AND p.status = 'Aberto'
+       LIMIT 1`,
+      [id_item_cardapio]
+    );
+    return rows.length > 0;
+  }
 }
 
 module.exports = new itemPedidoDAO()

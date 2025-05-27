@@ -39,20 +39,20 @@ class mesaDAO {
     return result.affectedRows > 0
   }
 
-  async findAvailable(data_hora, capacidade_minima) {
+  async findAvailable(data_reserva, capacidade_minima) {
     const query = `
-      SELECT m.* FROM Mesa m 
-      WHERE m.capacidade >= ? 
-      AND m.disponibilidade = 'Disponível'
-      AND NOT EXISTS (
-        SELECT 1 FROM reservas r 
-        WHERE r.id_mesa = m.id_mesa 
-        AND r.data_hora = ? 
-        AND r.status = 'Ativa'
-      )
-      ORDER BY m.capacidade, m.num_mesa
-    `
-    const [rows] = await pool.execute(query, [capacidade_minima, data_hora])
+    SELECT m.* FROM Mesa m 
+    WHERE m.capacidade >= ? 
+    AND m.disponibilidade = 'Disponível'
+    AND NOT EXISTS (
+      SELECT 1 FROM Reserva r 
+      WHERE r.id_mesa = m.id_mesa 
+      AND r.data_reserva = ? 
+      AND r.status = 'Ativa'
+    )
+    ORDER BY m.capacidade, m.num_mesa
+  `
+    const [rows] = await pool.execute(query, [capacidade_minima, data_reserva])
     return rows
   }
 
@@ -93,9 +93,9 @@ class mesaDAO {
 
   async getMesasComReservasAtivas() {
     const query = `
-      SELECT m.*, r.data_hora, r.nome_cliente, r.num_pessoas
+      SELECT m.*, r.data_reserva, r.nome_cliente, r.num_pessoas
       FROM Mesa m
-      INNER JOIN reservas r ON m.id_mesa = r.id_mesa
+      INNER JOIN Reserva r ON m.id_mesa = r.id_mesa
       WHERE r.status = 'Ativa'
       ORDER BY m.num_mesa
     `

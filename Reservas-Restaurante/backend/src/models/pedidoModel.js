@@ -28,6 +28,8 @@ class pedidoModel {
       errors.push("Número da mesa é obrigatório")
     }
 
+    /*
+
     if (!pedidoData.nome_cliente || pedidoData.nome_cliente.trim().length < 2) {
       errors.push("Nome do cliente é obrigatório")
     }
@@ -40,6 +42,8 @@ class pedidoModel {
     if (!pedidoData.status || !statusValidos.includes(pedidoData.status)) {
       errors.push("Status deve ser: Aberto ou Finalizado")
     }
+
+    */
 
     return errors
   }

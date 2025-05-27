@@ -17,7 +17,7 @@ class pagamentoModel {
       errors.push("Valor total deve ser maior que zero")
     }
 
-    const statusValidos = ["Em Andamento", "Pago",]
+    const statusValidos = ["Em Andamento", "Pago"]
     if (!pagamentoData.status || !statusValidos.includes(pagamentoData.status)) {
       errors.push("Status deve ser: Em Andamento ou Pago")
     }

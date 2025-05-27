@@ -1,4 +1,5 @@
 const cardapioDAO = require("../dao/cardapioDAO")
+const itemPedidoDAO = require("../dao/itemPedidoDAO");
 const CardapioModel = require("../models/cardapioModel")
 
 class cardapioService {
@@ -75,6 +76,12 @@ class cardapioService {
     try {
       // Verificar se item existe
       await this.getItemById(id)
+
+        // Verificar se o item está em algum pedido aberto
+      const PedidoEmAberto = await itemPedidoDAO.existePedidoEmAberto(id);
+      if (PedidoEmAberto) {
+        throw new Error("Não é possível excluir: este item está em um pedido aberto.");
+      }
 
       const deleted = await cardapioDAO.delete(id)
       if (!deleted) {

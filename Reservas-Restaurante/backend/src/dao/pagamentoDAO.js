@@ -65,9 +65,9 @@ class pagamentoDAO {
         ped.nome_cliente,
         ped.cpf_cliente,
         ped.data_reserva,
-        ped.data_hora_reserva
+        ped.hora_reserva
       FROM Pagamento pag
-      INNER JOIN pedidos ped ON pag.id_pedido = ped.id_pedido
+      INNER JOIN Pedido ped ON pag.id_pedido = ped.id_pedido
       ORDER BY pag.id_pagamento DESC
     `
     const [rows] = await pool.execute(query)
@@ -85,9 +85,9 @@ class pagamentoDAO {
         ped.nome_cliente,
         ped.cpf_cliente,
         ped.data_reserva,
-        ped.data_hora_reserva
+        ped.hora_reserva
       FROM Pagamento pag
-      INNER JOIN pedidos ped ON pag.id_pedido = ped.id_pedido
+      INNER JOIN Pedido ped ON pag.id_pedido = ped.id_pedido
       WHERE 1=1
     `
     const params = []
@@ -126,7 +126,7 @@ class pagamentoDAO {
         SUM(CASE WHEN pag.status = 'Pago' THEN pag.valor_total ELSE 0 END) as total_recebido,
         SUM(CASE WHEN pag.status = 'Em Andamento' THEN pag.valor_total ELSE 0 END) as total_pendente
       FROM Pagamento pag
-      INNER JOIN pedidos ped ON pag.id_pedido = ped.id_pedido
+      INNER JOIN Pedido ped ON pag.id_pedido = ped.id_pedido
     `
     const params = []
 
