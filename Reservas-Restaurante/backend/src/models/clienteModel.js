@@ -19,7 +19,7 @@ class clienteModel {
                 errors.push("CPF inválido")
             }
 
-            if(!clienteData.email || this.isValidEmail(clienteData.email)) {
+            if(!clienteData.email || !this.isValidEmail(clienteData.email)) {
                 errors.push("Email inválido")
             }
 

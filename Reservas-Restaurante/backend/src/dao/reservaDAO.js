@@ -2,12 +2,12 @@ const { pool } = require("../config/database")
 
 class reservaDAO {
   async findAll() {
-    const [rows] = await pool.execute("SELECT * FROM reservas ORDER BY data_reserva DESC, hora_reserva DESC")
+    const [rows] = await pool.execute("SELECT * FROM Reserva ORDER BY data_reserva DESC, hora_reserva DESC")
     return rows
   }
 
   async findById(id) {
-    const [rows] = await pool.execute("SELECT * FROM reservas WHERE id_reserva = ?", [id])
+    const [rows] = await pool.execute("SELECT * FROM Reserva WHERE id_reserva = ?", [id])
     return rows[0]
   }
 
@@ -25,7 +25,7 @@ class reservaDAO {
     } = reserva
 
     const [result] = await pool.execute(
-      `INSERT INTO reservas (id_cliente, nome_cliente, cpf_cliente, id_mesa, num_mesa, data_reserva, hora_reserva, num_pessoas, status) 
+      `INSERT INTO Reserva (id_cliente, nome_cliente, cpf_cliente, id_mesa, num_mesa, data_reserva, hora_reserva, num_pessoas, status) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [id_cliente, nome_cliente, cpf_cliente, id_mesa, num_mesa, data_reserva, hora_reserva, num_pessoas, status],
     )
@@ -46,7 +46,7 @@ class reservaDAO {
     } = reserva
 
     const [result] = await pool.execute(
-      `UPDATE reservas SET id_cliente = ?, nome_cliente = ?, cpf_cliente = ?, id_mesa = ?, 
+      `UPDATE Reserva SET id_cliente = ?, nome_cliente = ?, cpf_cliente = ?, id_mesa = ?, 
        num_mesa = ?, data_reserva = ?, hora_reserva = ?, num_pessoas = ?, status = ? WHERE id_reserva = ?`,
       [id_cliente, nome_cliente, cpf_cliente, id_mesa, num_mesa, data_reserva, hora_reserva, num_pessoas, status, id],
     )
@@ -54,25 +54,25 @@ class reservaDAO {
   }
 
   async delete(id) {
-    const [result] = await pool.execute("DELETE FROM reservas WHERE id_reserva = ?", [id])
+    const [result] = await pool.execute("DELETE FROM Reserva WHERE id_reserva = ?", [id])
     return result.affectedRows > 0
   }
 
   async findByMesaDataAtiva(id_mesa, data_reserva) {
     const [rows] = await pool.execute(
-      "SELECT * FROM reservas WHERE id_mesa = ? AND data_reserva = ? AND status = 'Ativa'",
+      "SELECT * FROM Reserva WHERE id_mesa = ? AND data_reserva = ? AND status = 'Ativa'",
       [id_mesa, data_reserva],
     )
     return rows
   }
 
   async findByMesaAndStatus(num_mesa, status) {
-    const [rows] = await pool.execute("SELECT * FROM reservas WHERE num_mesa = ? AND status = ?", [num_mesa, status])
+    const [rows] = await pool.execute("SELECT * FROM Reserva WHERE num_mesa = ? AND status = ?", [num_mesa, status])
     return rows
   }
 
   async updateStatusByMesaAndData(num_mesa, data_reserva, status) {
-    const [result] = await pool.execute("UPDATE reservas SET status = ? WHERE num_mesa = ? AND data_reserva = ?", [
+    const [result] = await pool.execute("UPDATE Reserva SET status = ? WHERE num_mesa = ? AND data_reserva = ?", [
       status,
       num_mesa,
       data_reserva,
@@ -82,14 +82,14 @@ class reservaDAO {
 
   async updateStatusByMesaDataHora(num_mesa, data_reserva, hora_reserva, status) {
     const [result] = await pool.execute(
-      "UPDATE reservas SET status = ? WHERE num_mesa = ? AND data_reserva = ? AND hora_reserva = ?",
+      "UPDATE Reserva SET status = ? WHERE num_mesa = ? AND data_reserva = ? AND hora_reserva = ?",
       [status, num_mesa, data_reserva, hora_reserva],
     )
     return result.affectedRows > 0
   }
 
   async search(filters) {
-    let query = "SELECT * FROM reservas WHERE 1=1"
+    let query = "SELECT * FROM Reserva WHERE 1=1"
     const params = []
 
     if (filters.nome_cliente) {
@@ -130,7 +130,7 @@ class reservaDAO {
 
   async findAtivas() {
     const [rows] = await pool.execute(
-      "SELECT * FROM reservas WHERE status = 'Ativa' ORDER BY data_reserva, hora_reserva",
+      "SELECT * FROM Reserva WHERE status = 'Ativa' ORDER BY data_reserva, hora_reserva",
     )
     return rows
   }

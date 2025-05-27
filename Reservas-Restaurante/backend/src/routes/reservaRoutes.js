@@ -13,7 +13,7 @@ router.get("/search", reservaController.searchReservas)
 router.get("/ativas", reservaController.getReservasAtivas)
 
 // GET /api/reservas/:id - Buscar reserva por ID
-router.get("/:id", reservaController.getReservaById)
+router.get("/:id", reservaController.getReservasById)
 
 // POST /api/reservas - Criar nova reserva
 // Body: { cpf_cliente, num_mesa, data_reserva, hora_reserva, num_pessoas, status }
