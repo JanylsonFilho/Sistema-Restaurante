@@ -1,101 +1,169 @@
-// pagamento.js com dados adicionais do pedido
+const API_BASE_URL = "http://localhost:3000/api"; //
 
-function listarPagamentos() {
-  const lista = document.getElementById("listaPagamentos");
-  const pagamentos = JSON.parse(localStorage.getItem("pagamentos")) || [];
-  const pedidos = JSON.parse(localStorage.getItem("pedidos")) || [];
+document.addEventListener("DOMContentLoaded", () => {
+  listarPagamentos(); //
 
-  const filtroData = document.getElementById("filtroDataCaixa")?.value;
-  const filtroStatus = document.getElementById("filtroStatusCaixa")?.value;
+  document.getElementById("filtroDataCaixa")?.addEventListener("change", listarPagamentos); //
+  document.getElementById("filtroStatusCaixa")?.addEventListener("change", listarPagamentos); //
+  document.getElementById("formEdicao")?.addEventListener("submit", handleEdicaoPagamento); //
+});
 
-  lista.innerHTML = "";
+async function listarPagamentos() {
+  const lista = document.getElementById("listaPagamentos"); //
+  lista.innerHTML = ""; //
 
-  let totalEsperado = 0;
-  let totalRecebido = 0;
+  const filtroData = document.getElementById("filtroDataCaixa")?.value; //
+  const filtroStatus = document.getElementById("filtroStatusCaixa")?.value; //
 
-  pagamentos.forEach(p => {
-    const pedido = pedidos.find(ped => ped.id_pedido === p.id_pedido);
-    if (!pedido) return;
+  let url = `${API_BASE_URL}/pagamentos/search?`; //
+  if (filtroData) url += `data_reserva=${filtroData}&`; //
+  if (filtroStatus) url += `status=${filtroStatus}&`; //
+  url = url.slice(0, -1); // Remove o '&' final se houver
 
-    const dataPedido = pedido.data_reserva;
-    if ((!filtroData || dataPedido === filtroData) && (!filtroStatus || p.status === filtroStatus)) {
-      const dataFormatada = pedido.data_reserva.split("-").reverse().join("/");
-      const horaFormatada = pedido.data_hora_reserva.split("T")[1];
+  try {
+    const response = await fetch(url); //
+    if (!response.ok) { //
+      const errorData = await response.json(); //
+      throw new Error(errorData.message || `Erro HTTP! status: ${response.status}`); //
+    }
+    const data = await response.json(); //
+    const pagamentos = data.data; //
+
+    let totalEsperado = 0; //
+    let totalRecebido = 0; //
+
+    pagamentos.forEach(p => { //
+      const dataFormatada = p.data_reserva ? new Date(p.data_reserva).toLocaleDateString('pt-BR') : ''; //
+      const horaFormatada = p.hora_reserva ? p.hora_reserva.substring(0, 5) : ''; //
 
       lista.innerHTML += `
         <tr>
           <td>${p.id_pagamento}</td>
           <td>${p.id_pedido}</td>
-          <td>${pedido.numero_mesa}</td>
-          <td>${pedido.nome_cliente}</td>
-          <td>${pedido.cpf_cliente}</td>
+          <td>${p.numero_mesa}</td>
+          <td>${p.nome_cliente}</td>
+          <td>${p.cpf_cliente}</td>
           <td>${dataFormatada}</td>
           <td>${horaFormatada}</td>
           <td>${p.status}</td>
-          <td>R$ ${p.valor_total.toFixed(2)}</td>
-          <td><button onclick="deletarPagamento(${p.id_pagamento})">Excluir</button></td>
-        </tr>`;
+          <td>R$ ${parseFloat(p.valor_total).toFixed(2)}</td>
+          <td>
+            <button onclick="editarPagamento(${p.id_pagamento})">Editar</button>
+            <button onclick="deletarPagamento(${p.id_pagamento})">Excluir</button>
+          </td>
+        </tr>`; //
 
-      totalEsperado += p.valor_total;
-      if (p.status === "Pago") {
-        totalRecebido += p.valor_total;
+      totalEsperado += parseFloat(p.valor_total); //
+      if (p.status === "Pago") { //
+        totalRecebido += parseFloat(p.valor_total); //
       }
-    }
-  });
+    });
 
-  document.getElementById("resumoCaixa").innerHTML = `
-    <strong>Balanço do Dia:</strong><br>
-    Data selecionada: ${filtroData ? filtroData.split("-").reverse().join("/") : "(todas)"}<br>
-    Total a receber: R$ ${totalEsperado.toFixed(2)}<br>
-    Total recebido: <span style="color:green">R$ ${totalRecebido.toFixed(2)}</span>
-  `;
-}
+    // Buscar balanço diário separadamente para garantir dados agregados corretos
+    const balancoResponse = await fetch(`${API_BASE_URL}/pagamentos/balanco?data_reserva=${filtroData || ''}`); //
+    const balancoData = await balancoResponse.json(); //
+    const balanco = balancoData.data; //
 
-function deletarPagamento(id) {
-  let pagamentos = JSON.parse(localStorage.getItem("pagamentos")) || [];
-  pagamentos = pagamentos.filter(p => p.id_pagamento !== id);
-  localStorage.setItem("pagamentos", JSON.stringify(pagamentos));
-  listarPagamentos();
-}
+    document.getElementById("resumoCaixa").innerHTML = `
+      <strong>Balanço do Dia:</strong><br>
+      Data selecionada: ${filtroData ? new Date(filtroData).toLocaleDateString('pt-BR') : "(todas)"}<br>
+      Total de Pagamentos: ${balanco.total_pagamentos}<br>
+      Total a receber (esperado): R$ ${parseFloat(balanco.total_esperado).toFixed(2)}<br>
+      Total recebido: <span style="color:green">R$ ${parseFloat(balanco.total_recebido).toFixed(2)}</span><br>
+      Total pendente: <span style="color:red">R$ ${parseFloat(balanco.total_pendente).toFixed(2)}</span><br>
+      Percentual Recebido: ${parseFloat(balanco.percentual_recebido).toFixed(2)}%
+    `; //
 
-document.addEventListener("DOMContentLoaded", listarPagamentos);
-
-
-
-function editarPagamento(id) {
-  const pagamentos = JSON.parse(localStorage.getItem("pagamentos")) || [];
-  const pagamento = pagamentos.find(p => p.id_pagamento === id);
-  if (!pagamento) return;
-
-  document.getElementById("edit_id_pagamento").value = pagamento.id_pagamento;
-  document.getElementById("edit_status").value = pagamento.status;
-  document.getElementById("edit_valor").value = pagamento.valor_total;
-  document.getElementById("formEdicao").style.display = "block";
-}
-
-
-document.getElementById("formEdicao").addEventListener("submit", function (e) {
-  e.preventDefault();
-
-  const id = parseInt(document.getElementById("edit_id_pagamento").value);
-  const status = document.getElementById("edit_status").value;
-  const valor = parseFloat(document.getElementById("edit_valor").value);
-
-  const pagamentos = JSON.parse(localStorage.getItem("pagamentos")) || [];
-  const pagamento = pagamentos.find(p => p.id_pagamento === id);
-  if (pagamento) {
-    pagamento.status = status;
-    pagamento.valor_total = valor;
-    localStorage.setItem("pagamentos", JSON.stringify(pagamentos));
-    listarPagamentos();
-    alert("Pagamento atualizado com sucesso!");
-    this.reset();
-    document.getElementById("formEdicao").style.display = "none";
+  } catch (error) {
+    console.error("Erro ao listar pagamentos:", error); //
+    alert("Erro ao carregar pagamentos: " + error.message); //
   }
-});
+}
+
+async function editarPagamento(id) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/pagamentos/${id}`); //
+    if (!response.ok) { //
+      const errorData = await response.json(); //
+      throw new Error(errorData.message || `Erro HTTP! status: ${response.status}`); //
+    }
+    const data = await response.json(); //
+    const pagamento = data.data; //
+
+    if (pagamento) { //
+      document.getElementById("edit_id_pagamento").value = pagamento.id_pagamento; //
+      document.getElementById("edit_status").value = pagamento.status; //
+      document.getElementById("edit_valor").value = parseFloat(pagamento.valor_total).toFixed(2); //
+      document.getElementById("formEdicao").style.display = "block"; //
+    }
+  } catch (error) {
+    console.error("Erro ao carregar dados do pagamento para edição:", error); //
+    alert("Erro ao carregar dados do pagamento para edição: " + error.message); //
+  }
+}
+
+async function handleEdicaoPagamento(e) {
+  e.preventDefault(); //
+
+  const id = document.getElementById("edit_id_pagamento").value; //
+  const status = document.getElementById("edit_status").value; //
+  const valor = parseFloat(document.getElementById("edit_valor").value); //
+
+  const pagamentoData = { //
+    valor_total: valor, //
+    status: status, //
+  };
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/pagamentos/${id}`, { //
+      method: "PUT", //
+      headers: { //
+        "Content-Type": "application/json", //
+      },
+      body: JSON.stringify(pagamentoData), //
+    });
+
+    const result = await response.json(); //
+
+    if (!response.ok) { //
+      throw new Error(result.message || `Erro HTTP! status: ${response.status}`); //
+    }
+
+    alert(result.message || "Pagamento atualizado com sucesso!"); //
+    this.reset(); //
+    document.getElementById("formEdicao").style.display = "none"; //
+    listarPagamentos(); //
+  } catch (error) {
+    console.error("Erro ao atualizar pagamento:", error); //
+    alert("Erro ao atualizar pagamento: " + error.message); //
+  }
+}
+
+async function deletarPagamento(id) {
+  if (!confirm("Tem certeza que deseja excluir este pagamento?")) { //
+    return; //
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/pagamentos/${id}`, { //
+      method: "DELETE", //
+    });
+
+    const result = await response.json(); //
+
+    if (!response.ok) { //
+      throw new Error(result.message || `Erro HTTP! status: ${response.status}`); //
+    }
+
+    alert(result.message || "Pagamento excluído com sucesso!"); //
+    listarPagamentos(); //
+  } catch (error) {
+    console.error("Erro ao deletar pagamento:", error); //
+    alert("Erro ao deletar pagamento: " + error.message); //
+  }
+}
 
 function cancelarEdicao() {
-  document.getElementById("formEdicao").reset();
-  document.getElementById("formEdicao").style.display = "none";
+  document.getElementById("formEdicao").reset(); //
+  document.getElementById("formEdicao").style.display = "none"; //
 }
-
