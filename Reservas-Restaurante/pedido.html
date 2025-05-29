@@ -6,80 +6,79 @@
   <link rel="stylesheet" href="css/style.css" />
   <style>
   #cardapio-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
   }
   .cardapio-item {
-  border: 1px solid #ccc;
-  padding: 10px;
-  cursor: pointer;
+    border: 1px solid #ccc;
+    padding: 10px;
+    cursor: pointer;
   }
   .pedido-item {
-  display: flex;
-  justify-content: space-between;
-  padding: 5px 0;
-  border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid #eee;
   }
   </style>
 </head>
- <body>
+<body>
   <script>
-  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
-  if (!usuario || usuario.tipo !== "garcom" && usuario.tipo !== "admin") {
-  alert("Acesso não autorizado.");
-  window.location.href = "login.html";
-  }
+    const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+    if (!usuario || (usuario.tipo !== "garcom" && usuario.tipo !== "admin")) {
+      alert("Acesso não autorizado.");
+      window.location.href = "login.html";
+    }
   </script>
- 
 
   <h1>Registro de Pedido</h1>
- 
 
-  
+  <label for="numero_mesa">Número da Mesa:</label>
   <input type="number" id="numero_mesa" placeholder="Número da Mesa" required />
+
+  <label for="data_reserva_pedido">Data da Reserva:</label>
   <input type="date" id="data_reserva_pedido" required />
-  
- 
+
+  <label for="hora_reserva_pedido">Horário da Reserva:</label>
+  <select id="hora_reserva_pedido" required>
+    <option value="">Selecione mesa e data</option>
+  </select>
 
   <h2>Cardápio</h2>
   <div id="cardapio-container"></div>
- 
 
   <h2>Itens do Pedido</h2>
   <div id="itensPedido"></div>
   <p>Total: R$ <span id="totalPedido">0.00</span></p>
- 
 
   <button onclick="finalizarPedido()">Finalizar Pedido</button>
+
   <label for="filtroData">Filtrar por data:</label>
-  <input type="date" id="filtroData"  />
+  <input type="date" id="filtroData" />
 
   <label for="filtroMesa">Filtrar por mesa:</label>
-  <input type="number" id="filtroMesa" placeholder="Número da mesa"  />
+  <input type="number" id="filtroMesa" placeholder="Número da mesa" />
 
   <h2>Pedidos Registrados</h2>
   <table border="1">
-  <thead>
-    <tr>
-      <th>ID Pedido</th>
-      <th>Número da Mesa</th>
-      <th>Garçom</th>
-      <th>Cliente</th>
-      <th>CPF</th>
-      <th>Data da Reserva</th>
-      <th>Horário da Reserva</th>
-      <th>Total</th>
-      <th>Status</th>
-      <th>Ações</th>
-    </tr>
-  </thead>
-
-
-  <tbody id="listaPedidos"></tbody>
+    <thead>
+      <tr>
+        <th>ID Pedido</th>
+        <th>Número da Mesa</th>
+        <th>Garçom</th>
+        <th>Cliente</th>
+        <th>CPF</th>
+        <th>Data da Reserva</th>
+        <th>Horário da Reserva</th>
+        <th>Total</th>
+        <th>Status</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody id="listaPedidos"></tbody>
   </table>
- 
 
   <script src="js/pedido.js"></script>
- </body>
- </html>
+</body>
+</html>

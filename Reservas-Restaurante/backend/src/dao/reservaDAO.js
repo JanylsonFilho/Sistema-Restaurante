@@ -66,8 +66,20 @@ class reservaDAO {
     return rows
   }
 
-  async findByMesaDataStatus(num_mesa, status) {
-    const [rows] = await pool.execute("SELECT * FROM Reserva WHERE num_mesa = ? AND  data_reserva=? AND status = ?", [num_mesa, data_reserva ,status])
+  async findByMesaDataStatus(num_mesa, data_reserva, status) {
+    const [rows] = await pool.execute(
+      "SELECT * FROM Reserva WHERE num_mesa = ? AND data_reserva = ? AND status = ?",
+      [num_mesa, data_reserva, status]
+    )
+    return rows
+  }
+
+  // NOVO: Buscar reserva por mesa, data, hora e status
+  async findByMesaDataHoraStatus(num_mesa, data_reserva, hora_reserva, status) {
+    const [rows] = await pool.execute(
+      "SELECT * FROM Reserva WHERE num_mesa = ? AND data_reserva = ? AND hora_reserva = ? AND status = ?",
+      [num_mesa, data_reserva, hora_reserva, status]
+    )
     return rows
   }
 

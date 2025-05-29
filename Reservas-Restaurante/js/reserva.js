@@ -8,70 +8,104 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.location.href = "login.html";
   }
   listarReservas();
+  carregarMesasDisponiveis(); // Carrega mesas ao abrir a tela
 });
 
 // Funções de conversão de data
-function formatarDataParaExibicao(dataOriginal) { // dataOriginal agora pode ser um objeto Date ou string
+function formatarDataParaExibicao(dataOriginal) {
   if (!dataOriginal) return "";
 
   let dateObj;
-
-  // Tenta criar um objeto Date. Se já for um, usa ele. Se for string, tenta converter.
   if (dataOriginal instanceof Date) {
     dateObj = dataOriginal;
   } else if (typeof dataOriginal === 'string') {
-    // Para strings como "YYYY-MM-DDTHH:mm:ss.sssZ" ou "YYYY-MM-DD"
-    // Usamos o construtor Date diretamente, que costuma ser robusto para ISO strings.
     dateObj = new Date(dataOriginal);
   } else {
-    // Caso o tipo não seja nem Date nem string
     return "Formato Inválido";
   }
 
-  // Verifica se o objeto Date é válido
   if (isNaN(dateObj.getTime())) {
-    // Se a conversão falhou (ex: string de data malformada), tenta parsear manualmente YYYY-MM-DD
     if (typeof dataOriginal === 'string' && dataOriginal.includes('-')) {
-        const partes = dataOriginal.split('-');
-        if (partes.length === 3) {
-            const ano = parseInt(partes[0]);
-            const mes = parseInt(partes[1]) - 1; // Mês no JavaScript é 0-indexado
-            const dia = parseInt(partes[2]);
-            dateObj = new Date(ano, mes, dia);
-            if (isNaN(dateObj.getTime())) {
-                 return "Data Inválida";
-            }
-        } else {
-            return "Data Inválida";
+      const partes = dataOriginal.split('-');
+      if (partes.length === 3) {
+        const ano = parseInt(partes[0]);
+        const mes = parseInt(partes[1]) - 1;
+        const dia = parseInt(partes[2]);
+        dateObj = new Date(ano, mes, dia);
+        if (isNaN(dateObj.getTime())) {
+          return "Data Inválida";
         }
-    } else {
+      } else {
         return "Data Inválida";
+      }
+    } else {
+      return "Data Inválida";
     }
   }
-
-  // Formata o objeto Date para o formato brasileiro
   return dateObj.toLocaleDateString('pt-BR');
 }
 
-function formatarDataParaEnvio(dataBr) { // De DD/MM/YYYY (do formulário, se precisar) para YYYY-MM-DD (para o banco)
+function formatarDataParaEnvio(dataBr) {
   if (!dataBr) return "";
   const partes = dataBr.split('/');
   if (partes.length === 3) {
     return `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
   }
-  return dataBr; // Se já estiver no formato YYYY-MM-DD, retorna como está.
-                 // Este caso é importante se o input type="date" já fornece YYYY-MM-DD
+  return dataBr;
 }
 
+// NOVO: Carregar mesas disponíveis ao selecionar data ou número de pessoas
+async function carregarMesasDisponiveis() {
+  const dataReserva = document.getElementById("data_reserva").value;
+  const numPessoas = parseInt(document.getElementById("num_pessoas")?.value) || 1;
+  const selectMesa = document.getElementById("num_mesa");
+  selectMesa.innerHTML = "";
+
+  if (!dataReserva) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "Selecione a data primeiro";
+    selectMesa.appendChild(option);
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/mesas/disponiveis?data_reserva=${dataReserva}&capacidade_minima=${numPessoas}`);
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Erro ao buscar mesas disponíveis");
+    }
+
+    if (data.data.length === 0) {
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = "Nenhuma mesa disponível";
+      selectMesa.appendChild(option);
+      return;
+    }
+
+    data.data.forEach(mesa => {
+      const option = document.createElement("option");
+      option.value = mesa.num_mesa;
+      option.textContent = `Mesa ${mesa.num_mesa} (${mesa.capacidade} lugares)`;
+      selectMesa.appendChild(option);
+    });
+  } catch (error) {
+    console.error("Erro ao carregar mesas disponíveis:", error);
+    alert("Erro ao carregar mesas disponíveis: " + error.message);
+  }
+}
+
+document.getElementById("data_reserva").addEventListener("change", carregarMesasDisponiveis);
+document.getElementById("num_pessoas").addEventListener("change", carregarMesasDisponiveis);
 
 document.getElementById("formReserva").addEventListener("submit", async function (e) {
   e.preventDefault();
 
   const cpf_cliente = document.getElementById("cpf_cliente").value;
   const num_mesa = parseInt(document.getElementById("num_mesa").value);
-  // O input type="date" já retorna a data no formato YYYY-MM-DD.
-  // Não precisamos formatar para envio para o back-end, pois já está no formato certo.
-  const data_reserva = document.getElementById("data_reserva").value; // Já está YYYY-MM-DD
+  const data_reserva = document.getElementById("data_reserva").value;
   const hora_reserva = document.getElementById("hora_reserva").value;
   const num_pessoas = parseInt(document.getElementById("num_pessoas").value);
   const status = document.getElementById("status").value;
@@ -79,7 +113,7 @@ document.getElementById("formReserva").addEventListener("submit", async function
   const reservaData = {
     cpf_cliente,
     num_mesa,
-    data_reserva, // Já está no formato YYYY-MM-DD
+    data_reserva,
     hora_reserva,
     num_pessoas,
     status,
@@ -116,6 +150,7 @@ document.getElementById("formReserva").addEventListener("submit", async function
     this.reset();
     idReservaEditando = null;
     listarReservas();
+    carregarMesasDisponiveis(); // Atualiza mesas após criar/editar reserva
   } catch (error) {
     console.error(errorMessage, error);
     alert(`${errorMessage} ${error.message}`);
@@ -128,14 +163,14 @@ async function listarReservas() {
 
   const filtroNome = document.getElementById("filtroNome")?.value.toLowerCase() || "";
   const filtroCpf = document.getElementById("filtroCpf")?.value.toLowerCase() || "";
-  const filtroData = document.getElementById("filtroData")?.value || ""; // Este já é YYYY-MM-DD
+  const filtroData = document.getElementById("filtroData")?.value || "";
   const filtroHora = document.getElementById("filtroHora")?.value || "";
   const filtroStatus = document.getElementById("filtroStatus")?.value.toLowerCase() || "";
 
   let url = `${API_BASE_URL}/reservas/search?`;
   if (filtroNome) url += `nome_cliente=${filtroNome}&`;
   if (filtroCpf) url += `cpf_cliente=${filtroCpf}&`;
-  if (filtroData) url += `data_reserva=${filtroData}&`; // Envia YYYY-MM-DD para o back-end
+  if (filtroData) url += `data_reserva=${filtroData}&`;
   if (filtroHora) url += `hora_reserva=${filtroHora}&`;
   if (filtroStatus) url += `status=${filtroStatus}&`;
   url = url.slice(0, -1);
@@ -154,7 +189,6 @@ async function listarReservas() {
         ? `<button onclick="editarReserva(${reserva.id_reserva})">Editar</button>`
         : "";
 
-      // Usando a nova função para formatar a data para exibição
       const dataFormatada = formatarDataParaExibicao(reserva.data_reserva);
       const horaFormatada = reserva.hora_reserva || "";
 
@@ -194,7 +228,6 @@ async function editarReserva(id) {
     if (reserva) {
       document.getElementById("cpf_cliente").value = reserva.cpf_cliente || "";
       document.getElementById("num_mesa").value = reserva.num_mesa;
-      // A data do back-end (YYYY-MM-DD) é diretamente atribuível ao input type="date"
       document.getElementById("data_reserva").value = reserva.data_reserva || "";
       document.getElementById("hora_reserva").value = reserva.hora_reserva || "";
       document.getElementById("num_pessoas").value = reserva.num_pessoas;
@@ -202,6 +235,7 @@ async function editarReserva(id) {
 
       idReservaEditando = id;
       alert("Modo de edição ativado para a reserva: " + id);
+      carregarMesasDisponiveis(); // Atualiza mesas ao editar
     }
   } catch (error) {
     console.error("Erro ao carregar dados da reserva para edição:", error);
@@ -227,6 +261,7 @@ async function deletarReserva(id) {
 
     alert(result.message || "Reserva excluída com sucesso!");
     listarReservas();
+    carregarMesasDisponiveis(); // Atualiza mesas após deletar reserva
   } catch (error) {
     console.error("Erro ao deletar reserva:", error);
     alert("Erro ao deletar reserva: " + error.message);

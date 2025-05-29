@@ -71,7 +71,7 @@ class reservaService {
       const id = await reservaDAO.create(reservaCompleta)
 
       // Atualizar disponibilidade da mesa para "Indisponível"
-      await mesaDAO.updateDisponibilidade(mesa.id_mesa, "Indisponível")
+      //await mesaDAO.updateDisponibilidade(mesa.id_mesa, "Indisponível")
 
       return await reservaDAO.findById(id)
     } catch (error) {

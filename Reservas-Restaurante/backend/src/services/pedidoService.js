@@ -61,10 +61,28 @@ class pedidoService {
         throw new Error("Mesa não encontrada")
       }
 
-      // Verificar se existe reserva ativa para a mesa
-      const reservas = await reservaDAO.findByMesaDataStatus(pedidoData.numero_mesa , pedidoData.data_reserva , "Ativa")
+      // NOVO: Verificar se já existe pedido aberto para a mesma mesa e data
+      const pedidosAbertos = await pedidoDAO.search({
+        numero_mesa: pedidoData.numero_mesa,
+        data_reserva: pedidoData.data_reserva,
+        status: "Aberto"
+      });
+      if (pedidosAbertos.length > 0) {
+        throw new Error("Já existe um pedido aberto para esta mesa e data. Finalize o pedido anterior antes de abrir outro.");
+      }
+
+      // Buscar reserva ativa para a mesa, data E hora
+      if (!pedidoData.hora_reserva) {
+        throw new Error("Horário da reserva é obrigatório")
+      }
+      const reservas = await reservaDAO.findByMesaDataHoraStatus(
+        pedidoData.numero_mesa,
+        pedidoData.data_reserva,
+        pedidoData.hora_reserva,
+        "Ativa"
+      )
       if (reservas.length === 0) {
-        throw new Error("Nenhuma reserva ativa encontrada para essa mesa")
+        throw new Error("Nenhuma reserva ativa encontrada para essa mesa, data e horário")
       }
 
       const reservaAtual = reservas[0]
@@ -127,7 +145,7 @@ class pedidoService {
     }
   }
 
-   async updatePedido(id, pedidoData) {
+  async updatePedido(id, pedidoData) {
     try {
       // Buscar pedido atual
       const pedidoAtual = await this.getPedidoById(id);
@@ -141,26 +159,28 @@ class pedidoService {
       // Verificar se a mesa existe
       const mesa = await mesaDAO.findByNumero(pedidoData.numero_mesa);
       if (!mesa) {
-          throw new Error("Mesa não encontrada");
+        throw new Error("Mesa não encontrada");
       }
 
-      // MODIFICADO: Se a mesa ou data da reserva foram alterados, validar a reserva ativa
+      // NOVO: Se a mesa, data ou hora da reserva foram alterados, validar a reserva ativa
       if (
-          pedidoData.numero_mesa !== pedidoAtual.numero_mesa ||
-          pedidoData.data_reserva !== pedidoAtual.data_reserva
+        pedidoData.numero_mesa !== pedidoAtual.numero_mesa ||
+        pedidoData.data_reserva !== pedidoAtual.data_reserva ||
+        pedidoData.hora_reserva !== pedidoAtual.hora_reserva
       ) {
-          const reservas = await reservaDAO.findByMesaDataStatus( // Usar a nova função
-              pedidoData.numero_mesa,
-              pedidoData.data_reserva,
-              "Ativa"
-          );
-          if (reservas.length === 0) {
-              throw new Error("Nenhuma reserva ativa encontrada para a mesa e data especificadas.");
-          }
-          // Opcional: Você pode querer validar se a reserva encontrada é a mesma que estava
-          // associada ao pedido original ou se faz sentido trocá-la.
+        if (!pedidoData.hora_reserva) {
+          throw new Error("Horário da reserva é obrigatório");
+        }
+        const reservas = await reservaDAO.findByMesaDataHoraStatus(
+          pedidoData.numero_mesa,
+          pedidoData.data_reserva,
+          pedidoData.hora_reserva,
+          "Ativa"
+        );
+        if (reservas.length === 0) {
+          throw new Error("Nenhuma reserva ativa encontrada para a mesa, data e horário especificados.");
+        }
       }
-
 
       // Atualizar campos obrigatórios que não vieram no JSON
       const pedidoParaAtualizar = {
@@ -172,37 +192,37 @@ class pedidoService {
       if (pedidoData.itens && pedidoData.itens.length > 0) {
         let novoTotalCalculado = 0;
         // Primeiro, exclua os itens antigos
-        await itemPedidoDAO.deleteByPedido(id); // Excluir todos os itens antigos do pedido
+        await itemPedidoDAO.deleteByPedido(id);
 
         // Em seguida, adicione os novos itens e calcule o novo total
         for (const item of pedidoData.itens) {
-            const itemCardapio = await cardapioDAO.findById(item.id_item_cardapio);
-            if (!itemCardapio) {
-                throw new Error(`Item do cardápio não encontrado: ${item.id_item_cardapio}`);
-            }
-            const subtotal = parseFloat(itemCardapio.preco) * item.quantidade;
-            await itemPedidoDAO.create({
-                id_pedido: id,
-                id_item_cardapio: item.id_item_cardapio,
-                quantidade: item.quantidade,
-                preco_unitario: parseFloat(itemCardapio.preco),
-                subtotal: subtotal,
-            });
-            novoTotalCalculado += subtotal;
+          const itemCardapio = await cardapioDAO.findById(item.id_item_cardapio);
+          if (!itemCardapio) {
+            throw new Error(`Item do cardápio não encontrado: ${item.id_item_cardapio}`);
+          }
+          const subtotal = parseFloat(itemCardapio.preco) * item.quantidade;
+          await itemPedidoDAO.create({
+            id_pedido: id,
+            id_item_cardapio: item.id_item_cardapio,
+            quantidade: item.quantidade,
+            preco_unitario: parseFloat(itemCardapio.preco),
+            subtotal: subtotal,
+          });
+          novoTotalCalculado += subtotal;
         }
-        pedidoParaAtualizar.total = novoTotalCalculado; // Atualize o total do pedido
+        pedidoParaAtualizar.total = novoTotalCalculado;
       }
 
       // Atualizar o pagamento associado ao pedido
       const pagamentoExistente = await pagamentoDAO.findByPedido(id);
       if (pagamentoExistente) {
-          await pagamentoDAO.updateValorByPedido(id, pedidoParaAtualizar.total);
+        await pagamentoDAO.updateValorByPedido(id, pedidoParaAtualizar.total);
       } else {
-          await pagamentoDAO.create({
-              id_pedido: id,
-              valor_total: pedidoParaAtualizar.total,
-              status: "Em Andamento",
-          });
+        await pagamentoDAO.create({
+          id_pedido: id,
+          valor_total: pedidoParaAtualizar.total,
+          status: "Em Andamento",
+        });
       }
 
       return await this.getPedidoComItens(id);
@@ -213,18 +233,12 @@ class pedidoService {
 
   async deletePedido(id) {
     try {
-      // Verificar se pedido existe
       await this.getPedidoById(id)
-
-      // Remover itens do pedido primeiro
       await itemPedidoDAO.deleteByPedido(id)
-
-      // Remover pedido
       const deleted = await pedidoDAO.delete(id)
       if (!deleted) {
         throw new Error("Falha ao excluir pedido")
       }
-
       return { message: "Pedido excluído com sucesso" }
     } catch (error) {
       throw new Error(`Erro ao excluir pedido: ${error.message}`)
@@ -239,7 +253,7 @@ class pedidoService {
     }
   }
 
-async fecharComanda(id) {
+  async fecharComanda(id) {
     try {
       const pedido = await this.getPedidoById(id)
 
@@ -247,18 +261,13 @@ async fecharComanda(id) {
         throw new Error("Apenas pedidos abertos podem ser fechados")
       }
 
-      // Atualizar status do pedido
       await pedidoDAO.updateStatus(id, "Finalizado")
 
-      // MODIFICADO: Finalizar reserva correspondente (usando apenas data_reserva)
-      // Seu banco de dados tem hora_reserva na Reserva, então podemos deixar o backend
-      // que fechar a comanda buscar a reserva pela data e hora que estão no pedido.
-      // Se a reserva é por dia, a hora aqui pode ser ignorada no serviço,
-      // mas é importante que o pedido ainda carregue a hora da reserva original.
-      await reservaDAO.updateStatusByMesaDataHora( // Mantido para consistência com o banco
+      // Finalizar reserva correspondente (por mesa, data e hora)
+      await reservaDAO.updateStatusByMesaDataHora(
         pedido.numero_mesa,
         pedido.data_reserva,
-        pedido.hora_reserva, // Usando a hora da reserva original do pedido
+        pedido.hora_reserva,
         "Finalizada",
       )
 
@@ -268,7 +277,6 @@ async fecharComanda(id) {
         await mesaDAO.updateDisponibilidade(mesa.id_mesa, "Disponível")
       }
 
-      // Atualizar pagamento
       await pagamentoDAO.updateStatusByPedido(id, "Pago")
 
       return { message: "Comanda fechada com sucesso" }
@@ -285,14 +293,24 @@ async fecharComanda(id) {
         throw new Error("Apenas pedidos finalizados podem ser reabertos")
       }
 
-      // Atualizar status do pedido
+      // NOVO: Verificar se já existe outro pedido aberto para a mesma mesa e data
+      const pedidosAbertos = await pedidoDAO.search({
+        numero_mesa: pedido.numero_mesa,
+        data_reserva: pedido.data_reserva,
+        status: "Aberto"
+      });
+      // Se existe outro pedido aberto (com id diferente), não permite reabrir
+      if (pedidosAbertos.some(p => p.id_pedido !== id)) {
+        throw new Error("Não é possível reabrir este pedido pois já existe outro pedido em aberto para esta mesa e data.");
+      }
+
       await pedidoDAO.updateStatus(id, "Aberto")
 
-      // MODIFICADO: Reativar reserva correspondente (usando apenas data_reserva)
-      await reservaDAO.updateStatusByMesaDataHora( // Mantido para consistência com o banco
+      // Reativar reserva correspondente (por mesa, data e hora)
+      await reservaDAO.updateStatusByMesaDataHora(
         pedido.numero_mesa,
         pedido.data_reserva,
-        pedido.hora_reserva, // Usando a hora da reserva original do pedido
+        pedido.hora_reserva,
         "Ativa"
       )
 
@@ -302,7 +320,6 @@ async fecharComanda(id) {
         await mesaDAO.updateDisponibilidade(mesa.id_mesa, "Indisponível")
       }
 
-      // Atualizar pagamento
       await pagamentoDAO.updateStatusByPedido(id, "Em Andamento")
 
       return { message: "Comanda reaberta com sucesso" }

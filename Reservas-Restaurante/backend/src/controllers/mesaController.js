@@ -113,8 +113,8 @@ class mesaController{
 
     async getMesasDisponiveis(req, res) {
         try {
-            const { data_hora, capacidade_minima } = req.query
-            const mesas = await mesaService.getMesasDisponiveis(data_hora, capacidade_minima)
+            const { data_reserva, capacidade_minima } = req.query
+            const mesas = await mesaService.getMesasDisponiveis(data_reserva, capacidade_minima)
             res.json({
                 success: true,
                 data: mesas,

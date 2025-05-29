@@ -1,5 +1,6 @@
 const mesaDAO = require("../dao/mesaDAO")
 const MesaModel = require("../models/mesaModel")
+const reservaDAO = require("../dao/reservaDAO") // Adicione esta linha se ainda não tiver
 
 class mesaService{
     async getAllMesas(){
@@ -76,7 +77,6 @@ class mesaService{
             const mesasComReservas = await mesaDAO.getMesasComReservasAtivas()
             const mesaComReserva = mesasComReservas.find((m) => m.id_mesa === Number.parseInt(id))
 
-                    
             if (mesaComReserva) {
                 throw new Error("Não é possível excluir mesa com reservas ativas")
             }
@@ -100,36 +100,51 @@ class mesaService{
         }
     }
 
-    async getMesasDisponiveis(data_hora, capacidade_minima = 1) {
+    async getMesasDisponiveis(data_reserva, capacidade_minima = 1) {
         try {
-            if (!data_hora) {
-                throw new Error("Data e hora são obrigatórias")
+            if (!data_reserva) {
+                throw new Error("Data é obrigatória")
             }
 
-            return await mesaDAO.findAvailable(data_hora, capacidade_minima)
+            return await mesaDAO.findAvailable(data_reserva, capacidade_minima)
         } catch (error) {
             throw new Error(`Erro ao buscar mesas disponíveis: ${error.message}`)
         }
     }
+//problema aqui no updateDisponibilidade , não ta tratando ainda o caso de nao poder deixar 
+// uma mesa virar indisponivel se ela tiver uma reserva ativa 
+
     async updateDisponibilidade(id, disponibilidade) {
         try {
-                // Verificar se mesa existe
-            await this.getMesasById(id)
+            // Buscar a mesa pelo ID para pegar o número correto
+            const mesa = await this.getMesasById(id);
 
             // Validar disponibilidade
-            const disponibilidadesValidas = ["Disponível",  "Indisponível"]
+            const disponibilidadesValidas = ["Disponível", "Indisponível"];
             if (!disponibilidadesValidas.includes(disponibilidade)) {
-                throw new Error("Disponibilidade deve ser: Disponível ou Indisponível")
+                throw new Error("Disponibilidade deve ser: Disponível ou Indisponível");
             }
 
-            const updated = await mesaDAO.updateDisponibilidade(id, disponibilidade)
+            // Se for tornar indisponível, verifica se há reservas ativas
+            if (disponibilidade === "Indisponível") {
+                // Busca reservas ativas para a mesa (todas datas futuras e hoje)
+                const reservasAtivas = await reservaDAO.search({
+                    num_mesa: mesa.num_mesa, // Usa o número da mesa correto!
+                    status: "Ativa"
+                });
+                if (reservasAtivas && reservasAtivas.length > 0) {
+                    throw new Error("Não é possível tornar a mesa indisponível para manutenção enquanto houver reservas ativas para ela.");
+                }
+            }
+
+            const updated = await mesaDAO.updateDisponibilidade(id, disponibilidade);
             if (!updated) {
-                throw new Error("Falha ao atualizar disponibilidade da mesa")
+                throw new Error("Falha ao atualizar disponibilidade da mesa");
             }
 
-            return await mesaDAO.findById(id)
+            return await mesaDAO.findById(id);
         } catch (error) {
-            throw new Error(`Erro ao atualizar disponibilidade: ${error.message}`)
+            throw new Error(`Erro ao atualizar disponibilidade: ${error.message}`);
         }
     }
 
@@ -143,4 +158,3 @@ class mesaService{
 }
 
 module.exports = new mesaService()
-

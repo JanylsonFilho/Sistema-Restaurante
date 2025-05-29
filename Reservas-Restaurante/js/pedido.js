@@ -1,10 +1,12 @@
-// Reservas-Restaurante/js/pedido.js
-
 const API_BASE_URL = "http://localhost:3000/api";
 
-let itensPedidoAtuais = []; // Itens que o usuário está adicionando no formulário
+let itensPedidoAtuais = [];
 let totalPedidoAtual = 0;
-let idPedidoEditando = null; // ID do pedido que está sendo editado (se for o caso)
+let idPedidoEditando = null;
+
+// NOVO: Armazena as reservas ativas para a mesa/data selecionados
+let reservasAtivasDisponiveis = [];
+let horaReservaSelecionada = "";
 
 document.addEventListener("DOMContentLoaded", async () => {
   const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
@@ -15,15 +17,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   await carregarCardapio();
-  listarPedidos(); // Chamada inicial para listar pedidos
+  listarPedidos();
+  // Carregar reservas disponíveis ao abrir a tela
+  document.getElementById("numero_mesa").addEventListener("change", carregarReservasAtivasParaMesaData);
+  document.getElementById("data_reserva_pedido").addEventListener("change", carregarReservasAtivasParaMesaData);
 });
 
-// Funções de formatação de data (copiadas de reserva.js)
 function formatarDataParaExibicao(dataOriginal) {
   if (!dataOriginal) return "";
 
   let dateObj;
-
   if (dataOriginal instanceof Date) {
     dateObj = dataOriginal;
   } else if (typeof dataOriginal === 'string') {
@@ -34,20 +37,20 @@ function formatarDataParaExibicao(dataOriginal) {
 
   if (isNaN(dateObj.getTime())) {
     if (typeof dataOriginal === 'string' && dataOriginal.includes('-')) {
-        const partes = dataOriginal.split('-');
-        if (partes.length === 3) {
-            const ano = parseInt(partes[0]);
-            const mes = parseInt(partes[1]) - 1;
-            const dia = parseInt(partes[2]);
-            dateObj = new Date(ano, mes, dia);
-            if (isNaN(dateObj.getTime())) {
-                 return "Data Inválida";
-            }
-        } else {
-            return "Data Inválida";
+      const partes = dataOriginal.split('-');
+      if (partes.length === 3) {
+        const ano = parseInt(partes[0]);
+        const mes = parseInt(partes[1]) - 1;
+        const dia = parseInt(partes[2]);
+        dateObj = new Date(ano, mes, dia);
+        if (isNaN(dateObj.getTime())) {
+          return "Data Inválida";
         }
-    } else {
+      } else {
         return "Data Inválida";
+      }
+    } else {
+      return "Data Inválida";
     }
   }
   return dateObj.toLocaleDateString('pt-BR');
@@ -136,56 +139,72 @@ function atualizarPedido() {
   totalElement.textContent = totalPedidoAtual.toFixed(2);
 }
 
-// Funções de formatação de data (copiadas de reserva.js)
-function formatarDataParaExibicao(dataOriginal) {
-  if (!dataOriginal) return "";
+// NOVO: Carregar reservas ativas para a mesa/data selecionados e preencher select de hora
+async function carregarReservasAtivasParaMesaData() {
+  const numeroMesa = parseInt(document.getElementById("numero_mesa").value);
+  const dataReserva = document.getElementById("data_reserva_pedido").value;
+  const selectHora = document.getElementById("hora_reserva_pedido");
 
-  let dateObj;
-
-  if (dataOriginal instanceof Date) {
-    dateObj = dataOriginal;
-  } else if (typeof dataOriginal === 'string') {
-    dateObj = new Date(dataOriginal);
-  } else {
-    return "Formato Inválido";
+  if (!numeroMesa || !dataReserva) {
+    if (selectHora) selectHora.innerHTML = '<option value="">Selecione mesa e data</option>';
+    reservasAtivasDisponiveis = [];
+    horaReservaSelecionada = "";
+    return;
   }
 
-  if (isNaN(dateObj.getTime())) {
-    if (typeof dataOriginal === 'string' && dataOriginal.includes('-')) {
-        const partes = dataOriginal.split('-');
-        if (partes.length === 3) {
-            const ano = parseInt(partes[0]);
-            const mes = parseInt(partes[1]) - 1;
-            const dia = parseInt(partes[2]);
-            dateObj = new Date(ano, mes, dia);
-            if (isNaN(dateObj.getTime())) {
-                 return "Data Inválida";
-            }
-        } else {
-            return "Data Inválida";
-        }
-    } else {
-        return "Data Inválida";
+  try {
+    // Busca reservas ativas para a mesa e data
+    const response = await fetch(`${API_BASE_URL}/reservas/search?num_mesa=${numeroMesa}&data_reserva=${dataReserva}&status=Ativa`);
+    const data = await response.json();
+    reservasAtivasDisponiveis = data.data || [];
+
+    if (!selectHora) return;
+
+    selectHora.innerHTML = "";
+    if (reservasAtivasDisponiveis.length === 0) {
+      selectHora.innerHTML = '<option value="">Nenhuma reserva ativa</option>';
+      horaReservaSelecionada = "";
+      return;
     }
-  }
-  return dateObj.toLocaleDateString('pt-BR');
-}
 
-// --- Funções de interação com a API de Pedidos ---
+    reservasAtivasDisponiveis.forEach(reserva => {
+      const option = document.createElement("option");
+      option.value = reserva.hora_reserva;
+      option.textContent = reserva.hora_reserva;
+      selectHora.appendChild(option);
+    });
+
+    // Seleciona a primeira hora por padrão
+    horaReservaSelecionada = reservasAtivasDisponiveis[0].hora_reserva;
+    selectHora.value = horaReservaSelecionada;
+
+    selectHora.onchange = function () {
+      horaReservaSelecionada = selectHora.value;
+    };
+  } catch (error) {
+    console.error("Erro ao buscar reservas ativas:", error);
+    if (selectHora) selectHora.innerHTML = '<option value="">Erro ao buscar reservas</option>';
+    reservasAtivasDisponiveis = [];
+    horaReservaSelecionada = "";
+  }
+}
 
 async function finalizarPedido() {
   const numeroMesa = parseInt(document.getElementById("numero_mesa").value);
-  // MODIFICADO: Pegar APENAS a data da reserva do formulário
   const dataReservaPedido = document.getElementById("data_reserva_pedido").value;
-  // REMOVIDO: Não precisamos mais do campo de hora
+  const horaReservaPedido = document.getElementById("hora_reserva_pedido") ? document.getElementById("hora_reserva_pedido").value : "";
 
   if (!numeroMesa || isNaN(numeroMesa)) {
     alert("Por favor, insira um número de mesa válido.");
     return;
   }
   if (!dataReservaPedido) {
-      alert("Por favor, selecione a data da reserva.");
-      return;
+    alert("Por favor, selecione a data da reserva.");
+    return;
+  }
+  if (!horaReservaPedido) {
+    alert("Por favor, selecione o horário da reserva.");
+    return;
   }
   if (!itensPedidoAtuais.length) {
     alert("Adicione pelo menos um item ao pedido.");
@@ -194,8 +213,8 @@ async function finalizarPedido() {
 
   const pedidoData = {
     numero_mesa: numeroMesa,
-    data_reserva: dataReservaPedido, // Envia APENAS a data da reserva
-    // REMOVIDO: hora_reserva não é mais enviada do front-end para criação/edição de pedido
+    data_reserva: dataReservaPedido,
+    hora_reserva: horaReservaPedido,
     itens: itensPedidoAtuais.map(item => ({
       id_item_cardapio: item.id_item_cardapio,
       quantidade: item.quantidade
@@ -233,8 +252,8 @@ async function finalizarPedido() {
 
     alert(successMessage);
     document.getElementById("numero_mesa").value = "";
-    document.getElementById("data_reserva_pedido").value = ""; // Limpa campo de data
-    // REMOVIDO: Limpeza do campo de hora
+    document.getElementById("data_reserva_pedido").value = "";
+    document.getElementById("hora_reserva_pedido").innerHTML = '<option value="">Selecione mesa e data</option>';
     itensPedidoAtuais = [];
     totalPedidoAtual = 0;
     atualizarPedido();
@@ -269,7 +288,7 @@ async function listarPedidos() {
 
     pedidos.forEach(pedido => {
       const dataFormatada = formatarDataParaExibicao(pedido.data_reserva);
-      const horaFormatada = pedido.hora_reserva ? pedido.hora_reserva.substring(0, 5) : ""; // Continua exibindo a hora que veio do back-end
+      const horaFormatada = pedido.hora_reserva ? pedido.hora_reserva.substring(0, 5) : "";
 
       let botoesAcao = `
         <button onclick="deletarPedido(${pedido.id_pedido})">Excluir</button>
@@ -285,7 +304,6 @@ async function listarPedidos() {
         `;
       }
       botoesAcao += `<button onclick="verDetalhes(${pedido.id_pedido})">Ver Detalhes</button>`;
-
 
       const row = `
         <tr>
@@ -320,10 +338,9 @@ async function editarPedido(id) {
 
     if (pedidoParaEditar) {
       document.getElementById("numero_mesa").value = pedidoParaEditar.numero_mesa;
-      // MODIFICADO: Preenche APENAS o campo de data
       document.getElementById("data_reserva_pedido").value = pedidoParaEditar.data_reserva ? new Date(pedidoParaEditar.data_reserva).toISOString().split('T')[0] : '';
-      // REMOVIDO: Preenchimento do campo de hora
-
+      await carregarReservasAtivasParaMesaData();
+      document.getElementById("hora_reserva_pedido").value = pedidoParaEditar.hora_reserva || "";
 
       itensPedidoAtuais = pedidoParaEditar.itens.map(item => ({
         id_item_cardapio: item.id_item_cardapio,
