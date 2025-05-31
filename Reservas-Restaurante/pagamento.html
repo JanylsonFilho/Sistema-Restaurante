@@ -14,15 +14,33 @@
     }
   </script>
 
+     <!-- Navbar reutilizável -->
+  <nav class="navbar">
+    <span class="logo">Sistema Restaurante</span>
+    <ul>
+      <li><a href="painel.html">Início</a></li>
+      <li><a href="cliente.html">Clientes</a></li>
+      <li><a href="mesa.html">Mesas</a></li>
+      <li><a href="reserva.html">Reservas</a></li>
+      <li><a href="pedido.html">Pedidos</a></li>
+      <li><a href="pagamento.html">Pagamentos</a></li>
+      <li><a href="login.html">Sair</a></li>
+    </ul>
+  </nav>
+
   <h2>Balanço Diário</h2>
-  <label for="filtroDataCaixa">Filtrar por data:</label>
-  <input type="date" id="filtroDataCaixa"  />
-  <label for="filtroStatusCaixa">Filtrar por status:</label>
-  <select id="filtroStatusCaixa" >
-    <option value="">Todos</option>
-    <option value="Em Andamento">Em Andamento</option>
-    <option value="Pago">Pago</option>
+
+  <div class = "filters">
+    <label for="filtroDataCaixa">Filtrar por data:</label>
+    <input type="date" id="filtroDataCaixa"  />
+    <label for="filtroStatusCaixa">Filtrar por status:</label>
+    <select id="filtroStatusCaixa" >
+      <option value="">Todos</option>
+      <option value="Em Andamento">Em Andamento</option>
+      <option value="Pago">Pago</option>
   </select>
+
+  </div>
 
 
   <div id="resumoCaixa" style="margin-top: 10px;"></div>

@@ -56,9 +56,18 @@ function formatarDataParaExibicao(dataOriginal) {
   return dateObj.toLocaleDateString('pt-BR');
 }
 
+
+
+// Adicione este event listener para o filtro de categoria do cardápio
+document.getElementById("filtroCategoriaPedido")?.addEventListener("input", carregarCardapio);
+
+// Altere a função carregarCardapio para aplicar o filtro:
 async function carregarCardapio() {
   const container = document.getElementById("cardapio-container");
   container.innerHTML = "";
+
+  // NOVO: filtro por categoria
+  const filtroCategoria = document.getElementById("filtroCategoriaPedido")?.value.toLowerCase() || "";
 
   try {
     const response = await fetch(`${API_BASE_URL}/cardapio`);
@@ -67,7 +76,14 @@ async function carregarCardapio() {
       throw new Error(errorData.message || `Erro HTTP! status: ${response.status}`);
     }
     const data = await response.json();
-    const cardapioItens = data.data;
+    let cardapioItens = data.data;
+
+    // Filtra por categoria se houver filtro
+    if (filtroCategoria) {
+      cardapioItens = cardapioItens.filter(item =>
+        item.categoria && item.categoria.toLowerCase().includes(filtroCategoria)
+      );
+    }
 
     cardapioItens.forEach(item => {
       const div = document.createElement("div");
@@ -75,6 +91,7 @@ async function carregarCardapio() {
       div.innerHTML = `
         <h3>${item.nome}</h3>
         <p>${item.descricao}</p>
+        <p><strong>Categoria:</strong> ${item.categoria}</p>
         <p>R$ ${parseFloat(item.preco).toFixed(2)}</p>
       `;
       div.addEventListener("click", () => adicionarItem(item));
@@ -85,6 +102,8 @@ async function carregarCardapio() {
     alert("Erro ao carregar cardápio: " + error.message);
   }
 }
+
+
 
 function adicionarItem(item) {
   const itemExistente = itensPedidoAtuais.find(i => i.id_item_cardapio === item.id_item_cardapio);
@@ -316,7 +335,11 @@ async function listarPedidos() {
           <td>${horaFormatada}</td>
           <td>R$ ${parseFloat(pedido.total).toFixed(2)}</td>
           <td>${pedido.status}</td>
-          <td>${botoesAcao}</td>
+          <td>
+            <div class="botoes-acao">
+              ${botoesAcao}
+            </div>
+          </td>
         </tr>`;
       lista.innerHTML += row;
     });

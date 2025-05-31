@@ -14,6 +14,20 @@
     }
   </script>
 
+    <!-- Navbar reutilizável -->
+  <nav class="navbar">
+    <span class="logo">Sistema Restaurante</span>
+    <ul>
+      <li><a href="painel.html">Início</a></li>
+      <li><a href="cliente.html">Clientes</a></li>
+      <li><a href="mesa.html">Mesas</a></li>
+      <li><a href="reserva.html">Reservas</a></li>
+      <li><a href="pedido.html">Pedidos</a></li>
+      <li><a href="pagamento.html">Pagamentos</a></li>
+      <li><a href="login.html">Sair</a></li>
+    </ul>
+  </nav>
+
   <h1>Nova Reserva</h1>
 
   <form id="formReserva">
@@ -45,7 +59,7 @@
 
   <h2>Reservas Atuais</h2>
 
-  <div>
+  <div class = "filters">
     <label for="filtroNome">Filtrar por nome:</label>
     <input type="text" id="filtroNome" oninput="listarReservas()" />
 

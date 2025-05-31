@@ -13,6 +13,20 @@
         window.location.href = "login.html";
         }
     </script>
+    <!-- Navbar reutilizável -->
+  <nav class="navbar">
+    <span class="logo">Sistema Restaurante</span>
+    <ul>
+      <li><a href="painel.html">Início</a></li>
+      <li><a href="cliente.html">Clientes</a></li>
+      <li><a href="mesa.html">Mesas</a></li>
+      <li><a href="reserva.html">Reservas</a></li>
+      <li><a href="pedido.html">Pedidos</a></li>
+      <li><a href="pagamento.html">Pagamentos</a></li>
+      <li><a href="login.html">Sair</a></li>
+    </ul>
+  </nav>
+
   <h1>Cadastro de Clientes</h1>
   
   <form id="formCliente">
@@ -25,7 +39,7 @@
 
 
     <!-- Filtros -->
-  <div style="margin: 30px 0 15px 0; padding-top: 10px; border-top: 1px solid #ccc;">
+  <div class="filters">
     <label for="filtroNome">Buscar por Nome:</label>
     <input type="text" id="filtroNome" placeholder="Digite o nome..." />
 
