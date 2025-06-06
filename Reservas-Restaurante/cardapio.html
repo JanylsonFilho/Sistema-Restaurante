@@ -8,15 +8,14 @@
 <body>
   <script>
     const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
-    if (!usuario || usuario.tipo !== "admin") {
+    // Todos podem acessar a página, mas o controle de acesso aos elementos será feito via JS
+    if (!usuario) {
       alert("Acesso não autorizado.");
       window.location.href = "login.html";
     }
   </script>
 
-    <!-- Navbar reutilizável -->
-    <!-- Navbar reutilizável -->
-  <nav class="navbar">
+    <nav class="navbar">
     <span class="logo">Sistema Restaurante</span>
     <ul>
       <li><a href="painel.html">Início</a></li>
@@ -52,8 +51,7 @@
   <table border="1">
     <thead>
       <tr>
-        <th>ID</th><th>Nome</th><th>Descrição</th><th>Categoria</th><th>Preço</th><th>Ações</th>
-      </tr>
+        <th>ID</th><th>Nome</th><th>Descrição</th><th>Categoria</th><th>Preço</th><th id="thAcoesCardapio">Ações</th> </tr>
     </thead>
     <tbody id="listaCardapio"></tbody>
   </table>

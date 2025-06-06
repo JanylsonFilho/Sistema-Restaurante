@@ -24,7 +24,7 @@ router.post("/", mesaController.createMesa)
 router.put("/:id", mesaController.updateMesa)
 
 // PATCH /api/mesas/:id/disponibilidade - Atualizar apenas a disponibilidade
-router.patch("/:id/disponibilidade", mesaController.updateDisponibilidade)
+//router.patch("/:id/disponibilidade", mesaController.updateDisponibilidade)
 
 // DELETE /api/mesas/:id - Excluir mesa
 router.delete("/:id", mesaController.deleteMesa)

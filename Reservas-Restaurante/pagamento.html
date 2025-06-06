@@ -8,14 +8,14 @@
 <body>
   <script>
     const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
-    if (!usuario || (usuario.tipo !== "financeiro" && usuario.tipo !== "admin")) {
+    // Todos podem acessar a página, mas o controle de acesso aos elementos será feito via JS
+    if (!usuario) {
       alert("Acesso não autorizado.");
       window.location.href = "login.html";
     }
   </script>
 
-     <!-- Navbar reutilizável -->
-  <nav class="navbar">
+     <nav class="navbar">
     <span class="logo">Sistema Restaurante</span>
     <ul>
       <li><a href="painel.html">Início</a></li>
@@ -46,8 +46,7 @@
   <div id="resumoCaixa" style="margin-top: 10px;"></div>
 
 
-    <!-- Formulário de Edição de Pagamento -->
-  <form id="formEdicao" style="display: none; margin-top: 20px; border: 1px solid #ccc; padding: 10px;">
+    <form id="formEdicao" style="display: none; margin-top: 20px; border: 1px solid #ccc; padding: 10px;">
     <h3>Editar Pagamento</h3>
     <input type="hidden" id="edit_id_pagamento" />
 
@@ -79,8 +78,7 @@
           <th>Horário</th>
           <th>Status</th>
           <th>Valor</th>
-          <th>Ações</th>
-        </tr>
+          <th id="thAcoesPagamento">Ações</th> </tr>
       </thead>
 
     <tbody id="listaPagamentos"></tbody>

@@ -1,6 +1,7 @@
 const reservaDAO = require("../dao/reservaDAO")
 const clienteDAO = require("../dao/clienteDAO")
 const mesaDAO = require("../dao/mesaDAO")
+const pedidoDAO = require("../dao/pedidoDAO");
 const ReservaModel = require("../models/reservaModel")
 
 class reservaService {
@@ -143,21 +144,27 @@ class reservaService {
     }
   }
 
-  async deleteReserva(id) {
-    try {
-      // Verificar se reserva existe
-      await this.getReservaById(id)
+ async deleteReserva(id) {
+  try {
+    // Verificar se reserva existe
+    const reserva = await this.getReservaById(id);
 
-      const deleted = await reservaDAO.delete(id)
-      if (!deleted) {
-        throw new Error("Falha ao excluir reserva")
-      }
-
-      return { message: "Reserva excluída com sucesso" }
-    } catch (error) {
-      throw new Error(`Erro ao excluir reserva: ${error.message}`)
+    // Verificar se existe pedido ativo para esta reserva (por mesa e data)
+    const pedidosAtivos = await pedidoDAO.findPedidosAtivosPorReserva(reserva.num_mesa, reserva.data_reserva);
+    if (pedidosAtivos && pedidosAtivos.length > 0) {
+      throw new Error("Não é possível excluir a reserva pois há pedidos ativos vinculados a ela.");
     }
+
+    const deleted = await reservaDAO.delete(id);
+    if (!deleted) {
+      throw new Error("Falha ao excluir reserva");
+    }
+
+    return { message: "Reserva excluída com sucesso" };
+  } catch (error) {
+    throw new Error(`Erro ao excluir reserva: ${error.message}`);
   }
+}
 
   async searchReservas(filters) {
     try {

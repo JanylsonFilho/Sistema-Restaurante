@@ -1,7 +1,36 @@
-const API_BASE_URL = "http://localhost:3000/api"; // Verifique a porta do seu back-end
+// Reservas-Restaurante/js/cliente.js
+const API_BASE_URL = "http://localhost:3000/api";
 let idClienteEditando = null;
 
-document.getElementById("formCliente").addEventListener("submit", async function (e) {
+document.addEventListener("DOMContentLoaded", () => {
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (!usuario) { // Se não houver usuário logado, redireciona
+    alert("Acesso não autorizado.");
+    window.location.href = "login.html";
+    return;
+  }
+
+  // Obter referências aos elementos HTML
+  const formCliente = document.getElementById("formCliente");
+  const thAcoes = document.querySelector("#listaClientes").previousElementSibling.querySelector("th:last-child");
+
+  // Esconder/mostrar formulário e coluna 'Ações' na tabela
+  if (usuario.tipo === "admin" || usuario.tipo === "recepcionista") {
+    if (formCliente) formCliente.style.display = "flex"; // Garante que o formulário é exibido
+    if (thAcoes) thAcoes.style.display = "table-cell"; // Garante que a coluna 'Ações' é exibida
+  } else {
+    if (formCliente) formCliente.style.display = "none"; // Oculta o formulário para outros usuários
+    if (thAcoes) thAcoes.style.display = "none"; // Oculta a coluna 'Ações' para outros usuários
+  }
+
+  listarClientes();
+
+  document.getElementById("filtroNome")?.addEventListener("input", listarClientes);
+  document.getElementById("filtroCPF")?.addEventListener("input", listarClientes);
+  document.getElementById("filtroEmail")?.addEventListener("input", listarClientes);
+});
+
+document.getElementById("formCliente")?.addEventListener("submit", async function (e) {
   e.preventDefault();
 
   const nome = document.getElementById("nome").value;
@@ -54,6 +83,7 @@ document.getElementById("formCliente").addEventListener("submit", async function
 });
 
 async function listarClientes() {
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado")); // Obter usuário novamente
   const lista = document.getElementById("listaClientes");
   lista.innerHTML = "";
 
@@ -77,6 +107,15 @@ async function listarClientes() {
     const clientes = data.data;
 
     clientes.forEach((cliente) => {
+      let botoesAcao = '';
+      // Apenas admin e recepcionista podem ver os botões de ação
+      if (usuario.tipo === "admin" || usuario.tipo === "recepcionista") {
+        botoesAcao = `
+          <button onclick="deletarCliente(${cliente.id_cliente})">Excluir</button>
+          <button onclick="editarCliente(${cliente.id_cliente})">Editar</button>
+        `;
+      }
+
       const row = `
         <tr>
           <td>${cliente.id_cliente}</td>
@@ -84,9 +123,8 @@ async function listarClientes() {
           <td>${cliente.cpf}</td>
           <td>${cliente.email}</td>
           <td>${cliente.telefone}</td>
-          <td>
-            <button onclick="deletarCliente(${cliente.id_cliente})">Excluir</button>
-            <button onclick="editarCliente(${cliente.id_cliente})">Editar</button>
+          <td ${!(usuario.tipo === "admin" || usuario.tipo === "recepcionista") ? 'style="display:none;"' : ''}>
+            ${botoesAcao}
           </td>
         </tr>`;
       lista.innerHTML += row;
@@ -98,6 +136,12 @@ async function listarClientes() {
 }
 
 async function editarCliente(id) {
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (usuario.tipo !== "admin" && usuario.tipo !== "recepcionista") {
+    alert("Você não tem permissão para editar clientes.");
+    return;
+  }
+
   try {
     const response = await fetch(`${API_BASE_URL}/clientes/${id}`);
     if (!response.ok) {
@@ -122,6 +166,12 @@ async function editarCliente(id) {
 }
 
 async function deletarCliente(id) {
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (usuario.tipo !== "admin" && usuario.tipo !== "recepcionista") {
+    alert("Você não tem permissão para excluir clientes.");
+    return;
+  }
+
   if (!confirm("Tem certeza que deseja excluir este cliente?")) {
     return;
   }
@@ -144,11 +194,3 @@ async function deletarCliente(id) {
     alert("Erro ao deletar cliente: " + error.message);
   }
 }
-
-document.addEventListener("DOMContentLoaded", () => {
-  listarClientes();
-
-  document.getElementById("filtroNome")?.addEventListener("input", listarClientes);
-  document.getElementById("filtroCPF")?.addEventListener("input", listarClientes);
-  document.getElementById("filtroEmail")?.addEventListener("input", listarClientes);
-});

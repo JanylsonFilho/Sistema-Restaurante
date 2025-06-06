@@ -1,3 +1,4 @@
+
 const API_BASE_URL = "http://localhost:3000/api";
 let idMesaEditando = null;
 
@@ -9,21 +10,17 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // Esconde cadastro para não-admins
-  const form = document.getElementById("formMesa");
-  if (form) {
-    if (usuario.tipo !== "admin") {
-      form.style.display = "none";
-    }
-  }
+  const formMesa = document.getElementById("formMesa");
+  const thAcoes = document.getElementById("thAcoesMesa");
 
-  // Controla se o campo de disponibilidade é editável
-  const disponibilidadeInput = document.getElementById("disponibilidade");
-  if (disponibilidadeInput) {
-    // Apenas admin pode editar
-    disponibilidadeInput.readOnly = (usuario.tipo !== "admin");
+  // Esconder/mostrar formulário e coluna 'Ações' na tabela
+  if (usuario.tipo === "admin") {
+    if (formMesa) formMesa.style.display = "flex";
+    if (thAcoes) thAcoes.style.display = "table-cell";
+  } else {
+    if (formMesa) formMesa.style.display = "none";
+    if (thAcoes) thAcoes.style.display = "none";
   }
-
 
   listarMesas();
 });
@@ -31,10 +28,16 @@ document.addEventListener("DOMContentLoaded", () => {
 document.getElementById("formMesa")?.addEventListener("submit", async function (e) {
   e.preventDefault();
 
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (usuario.tipo !== "admin") {
+    alert("Você não tem permissão para cadastrar ou editar mesas.");
+    return;
+  }
+
   const numero_mesa = document.getElementById("num_mesa").value;
   const capacidade = parseInt(document.getElementById("capacidade").value);
   const nome_garcom = document.getElementById("nome_garcom").value;
-  const disponibilidade = document.getElementById("disponibilidade").value; // Obter o valor atualizado
+  const disponibilidade = document.getElementById("disponibilidade").value;
 
   const mesaData = {
     num_mesa: parseInt(numero_mesa),
@@ -116,7 +119,6 @@ async function listarMesas() {
           <button class="botao-editar" onclick="editarMesa(${mesa.id_mesa})">Editar</button>
         `;
       }
-      // Garçons e Recepcionistas não terão botões de ação para a mesa nesta interface.
 
       const row = `
         <tr>
@@ -125,7 +127,9 @@ async function listarMesas() {
           <td>${mesa.capacidade}</td>
           <td>${mesa.nome_garcom}</td>
           <td>${mesa.disponibilidade}</td>
-          <td>${botoes}</td>
+          <td ${!(usuario.tipo === "admin") ? 'style="display:none;"' : ''}>
+            ${botoes}
+          </td>
         </tr>`;
       lista.innerHTML += row;
     });
@@ -136,6 +140,12 @@ async function listarMesas() {
 }
 
 async function editarMesa(id) {
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (usuario.tipo !== "admin") {
+    alert("Você não tem permissão para editar mesas.");
+    return;
+  }
+
   try {
     const response = await fetch(`${API_BASE_URL}/mesas/${id}`);
     if (!response.ok) {
@@ -150,16 +160,9 @@ async function editarMesa(id) {
       document.getElementById("capacidade").value = mesa.capacidade;
       document.getElementById("nome_garcom").value = mesa.nome_garcom;
 
+      // Atualiza o select de disponibilidade
       const disponibilidadeInput = document.getElementById("disponibilidade");
       disponibilidadeInput.value = mesa.disponibilidade;
-
-      // Se for administrador, o campo de disponibilidade será editável.
-      // Caso contrário, ele permanecerá readOnly (definido no DOMContentLoaded)
-      if (JSON.parse(localStorage.getItem("usuarioLogado"))?.tipo === "admin") {
-          disponibilidadeInput.readOnly = false;
-      } else {
-          disponibilidadeInput.readOnly = true; // Garante que não é editável para outros perfis
-      }
 
       idMesaEditando = id;
       alert("Modo de edição ativado para a mesa: " + mesa.num_mesa);
@@ -171,6 +174,12 @@ async function editarMesa(id) {
 }
 
 async function deletarMesa(id) {
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (usuario.tipo !== "admin") {
+    alert("Você não tem permissão para excluir mesas.");
+    return;
+  }
+
   if (!confirm("Tem certeza que deseja excluir esta mesa?")) {
     return;
   }

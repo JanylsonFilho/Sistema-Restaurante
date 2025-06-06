@@ -272,11 +272,12 @@ class pedidoService {
       )
 
       // Liberar mesa
+      /*
       const mesa = await mesaDAO.findByNumero(pedido.numero_mesa)
       if (mesa) {
         await mesaDAO.updateDisponibilidade(mesa.id_mesa, "Disponível")
       }
-
+      */
       await pagamentoDAO.updateStatusByPedido(id, "Pago")
 
       return { message: "Comanda fechada com sucesso" }
@@ -315,10 +316,12 @@ class pedidoService {
       )
 
       // Marcar mesa como indisponível
+      /*
       const mesa = await mesaDAO.findByNumero(pedido.numero_mesa)
       if (mesa) {
         await mesaDAO.updateDisponibilidade(mesa.id_mesa, "Indisponível")
       }
+      */
 
       await pagamentoDAO.updateStatusByPedido(id, "Em Andamento")
 

@@ -1,24 +1,52 @@
+// Reservas-Restaurante/js/pedido.js
 const API_BASE_URL = "http://localhost:3000/api";
 
 let itensPedidoAtuais = [];
 let totalPedidoAtual = 0;
 let idPedidoEditando = null;
 
-// NOVO: Armazena as reservas ativas para a mesa/data selecionados
 let reservasAtivasDisponiveis = [];
 let horaReservaSelecionada = "";
 
 document.addEventListener("DOMContentLoaded", async () => {
   const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
-  if (!usuario || (usuario.tipo !== "garcom" && usuario.tipo !== "admin")) {
+  if (!usuario) { // Se não houver usuário logado, redireciona
     alert("Acesso não autorizado.");
     window.location.href = "login.html";
     return;
   }
 
+  // Obter referências aos elementos HTML
+  const formPedido = document.getElementById("formPedido");
+  const finalizarPedidoBtn = document.getElementById("finalizarPedidoBtn");
+  const thAcoes = document.getElementById("thAcoesPedido");
+  const cardapioContainer = document.getElementById("cardapio-container");
+  const filtrosCardapioPedido = document.getElementById("filtrosCardapioPedido");
+  const itensPedidoDiv = document.getElementById("itensPedido");
+  const totalPedidoP = document.getElementById("totalPedido").parentNode; // P element containing total
+
+  // Esconder/mostrar formulário, botão de finalizar e coluna 'Ações' na tabela
+  if (usuario.tipo === "admin" || usuario.tipo === "garcom") {
+    if (formPedido) formPedido.style.display = "flex";
+    if (finalizarPedidoBtn) finalizarPedidoBtn.style.display = "block";
+    if (thAcoes) thAcoes.style.display = "table-cell";
+    if (cardapioContainer) cardapioContainer.style.display = "grid"; // Cardápio é para interação
+    if (filtrosCardapioPedido) filtrosCardapioPedido.style.display = "flex";
+    if (itensPedidoDiv) itensPedidoDiv.style.display = "block";
+    if (totalPedidoP) totalPedidoP.style.display = "block";
+  } else {
+    if (formPedido) formPedido.style.display = "none";
+    if (finalizarPedidoBtn) finalizarPedidoBtn.style.display = "none";
+    if (thAcoes) thAcoes.style.display = "none";
+    if (cardapioContainer) cardapioContainer.style.display = "none"; // Oculta o cardápio
+    if (filtrosCardapioPedido) filtrosCardapioPedido.style.display = "none";
+    if (itensPedidoDiv) itensPedidoDiv.style.display = "none";
+    if (totalPedidoP) totalPedidoP.style.display = "none";
+  }
+
   await carregarCardapio();
   listarPedidos();
-  // Carregar reservas disponíveis ao abrir a tela
+
   document.getElementById("numero_mesa").addEventListener("change", carregarReservasAtivasParaMesaData);
   document.getElementById("data_reserva_pedido").addEventListener("change", carregarReservasAtivasParaMesaData);
 });
@@ -56,29 +84,25 @@ function formatarDataParaExibicao(dataOriginal) {
   return dateObj.toLocaleDateString('pt-BR');
 }
 
-
-
-// Adicione este event listener para o filtro de categoria do cardápio
 document.getElementById("filtroCategoriaPedido")?.addEventListener("input", carregarCardapio);
 
-// Altere a função carregarCardapio para aplicar o filtro:
 async function carregarCardapio() {
   const container = document.getElementById("cardapio-container");
+  if (!container || container.style.display === "none") return; // Não carrega se o container estiver oculto
+
   container.innerHTML = "";
 
-  // NOVO: filtro por categoria
   const filtroCategoria = document.getElementById("filtroCategoriaPedido")?.value.toLowerCase() || "";
 
   try {
     const response = await fetch(`${API_BASE_URL}/cardapio`);
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.message || `Erro HTTP! status: ${response.status}`);
+      throw new Error(data.message || `Erro HTTP! status: ${response.status}`);
     }
     const data = await response.json();
     let cardapioItens = data.data;
 
-    // Filtra por categoria se houver filtro
     if (filtroCategoria) {
       cardapioItens = cardapioItens.filter(item =>
         item.categoria && item.categoria.toLowerCase().includes(filtroCategoria)
@@ -103,9 +127,13 @@ async function carregarCardapio() {
   }
 }
 
-
-
 function adicionarItem(item) {
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (usuario.tipo !== "admin" && usuario.tipo !== "garcom") {
+    alert("Você não tem permissão para adicionar itens a pedidos.");
+    return;
+  }
+
   const itemExistente = itensPedidoAtuais.find(i => i.id_item_cardapio === item.id_item_cardapio);
   if (itemExistente) {
     itemExistente.quantidade++;
@@ -123,11 +151,21 @@ function adicionarItem(item) {
 }
 
 function removerItem(id) {
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (usuario.tipo !== "admin" && usuario.tipo !== "garcom") {
+    alert("Você não tem permissão para remover itens de pedidos.");
+    return;
+  }
   itensPedidoAtuais = itensPedidoAtuais.filter(item => item.id_item_cardapio !== id);
   atualizarPedido();
 }
 
 function alterarQuantidade(id, quantidade) {
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (usuario.tipo !== "admin" && usuario.tipo !== "garcom") {
+    alert("Você não tem permissão para alterar a quantidade de itens.");
+    return;
+  }
   const item = itensPedidoAtuais.find(i => i.id_item_cardapio === id);
   if (item) {
     item.quantidade = parseInt(quantidade);
@@ -158,7 +196,6 @@ function atualizarPedido() {
   totalElement.textContent = totalPedidoAtual.toFixed(2);
 }
 
-// NOVO: Carregar reservas ativas para a mesa/data selecionados e preencher select de hora
 async function carregarReservasAtivasParaMesaData() {
   const numeroMesa = parseInt(document.getElementById("numero_mesa").value);
   const dataReserva = document.getElementById("data_reserva_pedido").value;
@@ -172,7 +209,6 @@ async function carregarReservasAtivasParaMesaData() {
   }
 
   try {
-    // Busca reservas ativas para a mesa e data
     const response = await fetch(`${API_BASE_URL}/reservas/search?num_mesa=${numeroMesa}&data_reserva=${dataReserva}&status=Ativa`);
     const data = await response.json();
     reservasAtivasDisponiveis = data.data || [];
@@ -193,7 +229,6 @@ async function carregarReservasAtivasParaMesaData() {
       selectHora.appendChild(option);
     });
 
-    // Seleciona a primeira hora por padrão
     horaReservaSelecionada = reservasAtivasDisponiveis[0].hora_reserva;
     selectHora.value = horaReservaSelecionada;
 
@@ -209,6 +244,12 @@ async function carregarReservasAtivasParaMesaData() {
 }
 
 async function finalizarPedido() {
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (usuario.tipo !== "admin" && usuario.tipo !== "garcom") {
+    alert("Você não tem permissão para finalizar pedidos.");
+    return;
+  }
+
   const numeroMesa = parseInt(document.getElementById("numero_mesa").value);
   const dataReservaPedido = document.getElementById("data_reserva_pedido").value;
   const horaReservaPedido = document.getElementById("hora_reserva_pedido") ? document.getElementById("hora_reserva_pedido").value : "";
@@ -285,6 +326,7 @@ async function finalizarPedido() {
 }
 
 async function listarPedidos() {
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
   const lista = document.getElementById("listaPedidos");
   lista.innerHTML = "";
 
@@ -309,20 +351,24 @@ async function listarPedidos() {
       const dataFormatada = formatarDataParaExibicao(pedido.data_reserva);
       const horaFormatada = pedido.hora_reserva ? pedido.hora_reserva.substring(0, 5) : "";
 
-      let botoesAcao = `
-        <button onclick="deletarPedido(${pedido.id_pedido})">Excluir</button>
-      `;
-      if (pedido.status === "Aberto") {
+      let botoesAcao = ``;
+      if (usuario.tipo === "admin" || usuario.tipo === "garcom") {
         botoesAcao += `
-          <button onclick="fecharComanda(${pedido.id_pedido})">Pagar</button>
-          <button onclick="editarPedido(${pedido.id_pedido})">Editar</button>
+          <button onclick="deletarPedido(${pedido.id_pedido})">Excluir</button>
         `;
-      } else if (pedido.status === "Finalizado") {
-        botoesAcao += `
-          <button onclick="reabrirComanda(${pedido.id_pedido})">Reabrir</button>
-        `;
+        if (pedido.status === "Aberto") {
+          botoesAcao += `
+            <button onclick="fecharComanda(${pedido.id_pedido})">Pagar</button>
+            <button onclick="editarPedido(${pedido.id_pedido})">Editar</button>
+          `;
+        } else if (pedido.status === "Finalizado") {
+          botoesAcao += `
+            <button onclick="reabrirComanda(${pedido.id_pedido})">Reabrir</button>
+          `;
+        }
       }
       botoesAcao += `<button onclick="verDetalhes(${pedido.id_pedido})">Ver Detalhes</button>`;
+
 
       const row = `
         <tr>
@@ -335,7 +381,7 @@ async function listarPedidos() {
           <td>${horaFormatada}</td>
           <td>R$ ${parseFloat(pedido.total).toFixed(2)}</td>
           <td>${pedido.status}</td>
-          <td>
+          <td ${!(usuario.tipo === "admin" || usuario.tipo === "garcom") ? 'style="display:none;"' : ''}>
             <div class="botoes-acao">
               ${botoesAcao}
             </div>
@@ -350,6 +396,12 @@ async function listarPedidos() {
 }
 
 async function editarPedido(id) {
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (usuario.tipo !== "admin" && usuario.tipo !== "garcom") {
+    alert("Você não tem permissão para editar pedidos.");
+    return;
+  }
+
   try {
     const response = await fetch(`${API_BASE_URL}/pedidos/${id}/detalhes`);
     if (!response.ok) {
@@ -384,6 +436,11 @@ async function editarPedido(id) {
 }
 
 async function deletarPedido(id) {
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (usuario.tipo !== "admin" && usuario.tipo !== "garcom") {
+    alert("Você não tem permissão para excluir pedidos.");
+    return;
+  }
   if (!confirm("Tem certeza que deseja excluir este pedido?")) {
     return;
   }
@@ -408,6 +465,11 @@ async function deletarPedido(id) {
 }
 
 async function fecharComanda(idPedido) {
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (usuario.tipo !== "admin" && usuario.tipo !== "garcom") {
+    alert("Você não tem permissão para fechar comandas.");
+    return;
+  }
   if (!confirm("Deseja realmente fechar esta comanda e marcar como paga?")) {
     return;
   }
@@ -432,6 +494,11 @@ async function fecharComanda(idPedido) {
 }
 
 async function reabrirComanda(idPedido) {
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (usuario.tipo !== "admin" && usuario.tipo !== "garcom") {
+    alert("Você não tem permissão para reabrir comandas.");
+    return;
+  }
   if (!confirm("Deseja realmente reabrir esta comanda?")) {
     return;
   }
@@ -459,6 +526,5 @@ function verDetalhes(id) {
   window.location.href = `detalhes_pedido.html?id=${id}`;
 }
 
-// Event Listeners para os filtros
 document.getElementById("filtroData")?.addEventListener("change", listarPedidos);
 document.getElementById("filtroMesa")?.addEventListener("change", listarPedidos);

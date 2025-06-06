@@ -1,29 +1,45 @@
+// Reservas-Restaurante/js/cardapio.js
 const API_BASE_URL = "http://localhost:3000/api";
 let idItemEditando = null;
 
-// Criar uma função de inicialização para ser chamada apenas uma vez
 function initializeCardapioPage() {
   const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
-  if (!usuario || usuario.tipo !== "admin") {
+  if (!usuario) { // Se não houver usuário logado, redireciona
     alert("Acesso não autorizado.");
     window.location.href = "login.html";
     return;
   }
 
-  listarCardapio(); // Chama listarCardapio uma vez ao carregar a página
+  // Obter referências aos elementos HTML
+  const formCardapio = document.getElementById("formCardapio");
+  const thAcoes = document.getElementById("thAcoesCardapio");
 
-  // Adicionar event listeners APENAS UMA VEZ
+  // Esconder/mostrar formulário e coluna 'Ações' na tabela
+  if (usuario.tipo === "admin") {
+    if (formCardapio) formCardapio.style.display = "flex";
+    if (thAcoes) thAcoes.style.display = "table-cell";
+  } else {
+    if (formCardapio) formCardapio.style.display = "none";
+    if (thAcoes) thAcoes.style.display = "none";
+  }
+
+  listarCardapio();
+
   document.getElementById("formCardapio")?.addEventListener("submit", handleFormSubmit);
   document.getElementById("filtroNome")?.addEventListener("input", listarCardapio);
   document.getElementById("filtroCategoria")?.addEventListener("input", listarCardapio);
 }
 
-// Chamar a função de inicialização quando o DOM estiver completamente carregado
 document.addEventListener("DOMContentLoaded", initializeCardapioPage);
-
 
 async function handleFormSubmit(e) {
   e.preventDefault();
+
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (usuario.tipo !== "admin") {
+    alert("Você não tem permissão para cadastrar ou editar itens do cardápio.");
+    return;
+  }
 
   const nome = document.getElementById("nome").value;
   const descricao = document.getElementById("descricao").value;
@@ -67,7 +83,7 @@ async function handleFormSubmit(e) {
     alert(successMessage);
     this.reset();
     idItemEditando = null;
-    listarCardapio(); // Recarrega a lista
+    listarCardapio();
   } catch (error) {
     console.error(errorMessage, error);
     alert(`${errorMessage} ${error.message}`);
@@ -75,9 +91,9 @@ async function handleFormSubmit(e) {
 }
 
 async function listarCardapio() {
-  console.log("Chamada à listarCardapio()"); // Manter este log para verificar
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
   const lista = document.getElementById("listaCardapio");
-  lista.innerHTML = ""; // Limpa a lista antes de preencher
+  lista.innerHTML = "";
 
   const filtroNome = document.getElementById("filtroNome")?.value.toLowerCase() || "";
   const filtroCategoria = document.getElementById("filtroCategoria")?.value.toLowerCase() || "";
@@ -97,6 +113,14 @@ async function listarCardapio() {
     const itens = data.data;
 
     itens.forEach((item) => {
+      let botoesAcao = '';
+      if (usuario.tipo === "admin") {
+        botoesAcao = `
+          <button onclick="deletarItem(${item.id_item_cardapio})">Excluir</button>
+          <button onclick="editarItem(${item.id_item_cardapio})">Editar</button>
+        `;
+      }
+
       const row = `
         <tr>
           <td>${item.id_item_cardapio}</td>
@@ -104,9 +128,8 @@ async function listarCardapio() {
           <td>${item.descricao}</td>
           <td>${item.categoria}</td>
           <td>R$ ${parseFloat(item.preco).toFixed(2)}</td>
-          <td>
-            <button onclick="deletarItem(${item.id_item_cardapio})">Excluir</button>
-            <button onclick="editarItem(${item.id_item_cardapio})">Editar</button>
+          <td ${!(usuario.tipo === "admin") ? 'style="display:none;"' : ''}>
+            ${botoesAcao}
           </td>
         </tr>`;
       lista.innerHTML += row;
@@ -118,6 +141,11 @@ async function listarCardapio() {
 }
 
 async function editarItem(id) {
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (usuario.tipo !== "admin") {
+    alert("Você não tem permissão para editar itens do cardápio.");
+    return;
+  }
   try {
     const response = await fetch(`${API_BASE_URL}/cardapio/${id}`);
     if (!response.ok) {
@@ -131,7 +159,7 @@ async function editarItem(id) {
       document.getElementById("nome").value = item.nome;
       document.getElementById("descricao").value = item.descricao;
       document.getElementById("categoria").value = item.categoria;
-      document.getElementById("preco").value = item.preco; // Não converta para float aqui
+      document.getElementById("preco").value = item.preco;
       idItemEditando = id;
       alert("Modo de edição ativado para o item do cardápio: " + id);
     }
@@ -142,6 +170,11 @@ async function editarItem(id) {
 }
 
 async function deletarItem(id) {
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (usuario.tipo !== "admin") {
+    alert("Você não tem permissão para excluir itens do cardápio.");
+    return;
+  }
   if (!confirm("Tem certeza que deseja excluir este item do cardápio?")) {
     return;
   }

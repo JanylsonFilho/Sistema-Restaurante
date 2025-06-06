@@ -8,9 +8,10 @@
 <body>
     <script>
         const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
-        if (!usuario || (usuario.tipo !== "admin" && usuario.tipo !== "recepcionista")) {
-        alert("Acesso não autorizado.");
-        window.location.href = "login.html";
+        // Todos podem acessar a página, mas o controle de acesso aos elementos será feito via JS
+        if (!usuario) {
+            alert("Acesso não autorizado.");
+            window.location.href = "login.html";
         }
     </script>
     <!-- Navbar reutilizável -->

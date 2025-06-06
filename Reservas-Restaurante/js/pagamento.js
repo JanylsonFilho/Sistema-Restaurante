@@ -1,40 +1,68 @@
-const API_BASE_URL = "http://localhost:3000/api"; //
+// Reservas-Restaurante/js/pagamento.js
+const API_BASE_URL = "http://localhost:3000/api";
 
 document.addEventListener("DOMContentLoaded", () => {
-  listarPagamentos(); //
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (!usuario) { // Se não houver usuário logado, redireciona
+    alert("Acesso não autorizado.");
+    window.location.href = "login.html";
+    return;
+  }
 
-  document.getElementById("filtroDataCaixa")?.addEventListener("change", listarPagamentos); //
-  document.getElementById("filtroStatusCaixa")?.addEventListener("change", listarPagamentos); //
-  document.getElementById("formEdicao")?.addEventListener("submit", handleEdicaoPagamento); //
+  // Obter referências aos elementos HTML
+  const formEdicao = document.getElementById("formEdicao");
+  const thAcoes = document.getElementById("thAcoesPagamento");
+
+  // Esconder/mostrar formulário e coluna 'Ações' na tabela
+  if (usuario.tipo === "admin" || usuario.tipo === "financeiro") {
+    // Formulário de edição é inicialmente oculto, mas estará disponível para esses usuários
+    // Não alteramos o display aqui, apenas garantimos que a coluna de ações aparece
+    if (thAcoes) thAcoes.style.display = "table-cell";
+  } else {
+    if (formEdicao) formEdicao.style.display = "none"; // Oculta o formulário de edição
+    if (thAcoes) thAcoes.style.display = "none"; // Oculta a coluna 'Ações' para outros usuários
+  }
+
+  listarPagamentos();
+
+  document.getElementById("filtroDataCaixa")?.addEventListener("change", listarPagamentos);
+  document.getElementById("filtroStatusCaixa")?.addEventListener("change", listarPagamentos);
+  document.getElementById("formEdicao")?.addEventListener("submit", handleEdicaoPagamento);
 });
 
 async function listarPagamentos() {
-  const lista = document.getElementById("listaPagamentos"); //
-  lista.innerHTML = ""; //
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  const lista = document.getElementById("listaPagamentos");
+  lista.innerHTML = "";
 
-  const filtroData = document.getElementById("filtroDataCaixa")?.value; //
-  const filtroStatus = document.getElementById("filtroStatusCaixa")?.value; //
+  const filtroData = document.getElementById("filtroDataCaixa")?.value;
+  const filtroStatus = document.getElementById("filtroStatusCaixa")?.value;
 
-  let url = `${API_BASE_URL}/pagamentos/search?`; //
-  if (filtroData) url += `data_reserva=${filtroData}&`; //
-  if (filtroStatus) url += `status=${filtroStatus}&`; //
-  url = url.slice(0, -1); // Remove o '&' final se houver
+  let url = `${API_BASE_URL}/pagamentos/search?`;
+  if (filtroData) url += `data_reserva=${filtroData}&`;
+  if (filtroStatus) url += `status=${filtroStatus}&`;
+  url = url.slice(0, -1);
 
   try {
-    const response = await fetch(url); //
-    if (!response.ok) { //
-      const errorData = await response.json(); //
-      throw new Error(errorData.message || `Erro HTTP! status: ${response.status}`); //
+    const response = await fetch(url);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `Erro HTTP! status: ${response.status}`);
     }
-    const data = await response.json(); //
-    const pagamentos = data.data; //
+    const data = await response.json();
+    const pagamentos = data.data;
 
-    let totalEsperado = 0; //
-    let totalRecebido = 0; //
+    pagamentos.forEach(p => {
+      const dataFormatada = p.data_reserva ? new Date(p.data_reserva).toLocaleDateString('pt-BR') : '';
+      const horaFormatada = p.hora_reserva ? p.hora_reserva.substring(0, 5) : '';
 
-    pagamentos.forEach(p => { //
-      const dataFormatada = p.data_reserva ? new Date(p.data_reserva).toLocaleDateString('pt-BR') : ''; //
-      const horaFormatada = p.hora_reserva ? p.hora_reserva.substring(0, 5) : ''; //
+      let botoesAcao = '';
+      if (usuario.tipo === "admin" || usuario.tipo === "financeiro") {
+        botoesAcao = `
+          <button onclick="editarPagamento(${p.id_pagamento})">Editar</button>
+          <button onclick="deletarPagamento(${p.id_pagamento})">Excluir</button>
+        `;
+      }
 
       lista.innerHTML += `
         <tr>
@@ -47,123 +75,129 @@ async function listarPagamentos() {
           <td>${horaFormatada}</td>
           <td>${p.status}</td>
           <td>R$ ${parseFloat(p.valor_total).toFixed(2)}</td>
-          <td>
-            <button onclick="editarPagamento(${p.id_pagamento})">Editar</button>
-            <button onclick="deletarPagamento(${p.id_pagamento})">Excluir</button>
+          <td ${!(usuario.tipo === "admin" || usuario.tipo === "financeiro") ? 'style="display:none;"' : ''}>
+            ${botoesAcao}
           </td>
-        </tr>`; //
-
-      totalEsperado += parseFloat(p.valor_total); //
-      if (p.status === "Pago") { //
-        totalRecebido += parseFloat(p.valor_total); //
-      }
+        </tr>`;
     });
 
-    // Buscar balanço diário separadamente para garantir dados agregados corretos
-    const balancoResponse = await fetch(`${API_BASE_URL}/pagamentos/balanco?data_reserva=${filtroData || ''}`); //
-    const balancoData = await balancoResponse.json(); //
-    const balanco = balancoData.data; //
+    const balancoResponse = await fetch(`${API_BASE_URL}/pagamentos/balanco?data_reserva=${filtroData || ''}`);
+    const balancoData = await balancoResponse.json();
+    const balanco = balancoData.data;
 
     document.getElementById("resumoCaixa").innerHTML = `
       <strong>Balanço do Dia:</strong><br>
-      Data selecionada: ${filtroData ? new Date(filtroData).toLocaleDateString('pt-BR') : "(todas)"}<br>
+      Data selecionada:  ${filtroData ? filtroData.split('-').reverse().join('/') : "(todas)"} <br>
       Total de Pagamentos: ${balanco.total_pagamentos}<br>
       Total a receber (esperado): R$ ${parseFloat(balanco.total_esperado).toFixed(2)}<br>
       Total recebido: <span style="color:green">R$ ${parseFloat(balanco.total_recebido).toFixed(2)}</span><br>
       Total pendente: <span style="color:red">R$ ${parseFloat(balanco.total_pendente).toFixed(2)}</span><br>
-      Percentual Recebido: ${parseFloat(balanco.percentual_recebido).toFixed(2)}%
-    `; //
-
+    `;
   } catch (error) {
-    console.error("Erro ao listar pagamentos:", error); //
-    alert("Erro ao carregar pagamentos: " + error.message); //
+    console.error("Erro ao listar pagamentos:", error);
+    alert("Erro ao carregar pagamentos: " + error.message);
   }
 }
 
 async function editarPagamento(id) {
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (usuario.tipo !== "admin" && usuario.tipo !== "financeiro") {
+    alert("Você não tem permissão para editar pagamentos.");
+    return;
+  }
   try {
-    const response = await fetch(`${API_BASE_URL}/pagamentos/${id}`); //
-    if (!response.ok) { //
-      const errorData = await response.json(); //
-      throw new Error(errorData.message || `Erro HTTP! status: ${response.status}`); //
+    const response = await fetch(`${API_BASE_URL}/pagamentos/${id}`);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `Erro HTTP! status: ${response.status}`);
     }
-    const data = await response.json(); //
-    const pagamento = data.data; //
+    const data = await response.json();
+    const pagamento = data.data;
 
-    if (pagamento) { //
-      document.getElementById("edit_id_pagamento").value = pagamento.id_pagamento; //
-      document.getElementById("edit_status").value = pagamento.status; //
-      document.getElementById("edit_valor").value = parseFloat(pagamento.valor_total).toFixed(2); //
-      document.getElementById("formEdicao").style.display = "block"; //
+    if (pagamento) {
+      document.getElementById("edit_id_pagamento").value = pagamento.id_pagamento;
+      document.getElementById("edit_status").value = pagamento.status;
+      document.getElementById("edit_valor").value = parseFloat(pagamento.valor_total).toFixed(2);
+      document.getElementById("formEdicao").style.display = "block";
     }
   } catch (error) {
-    console.error("Erro ao carregar dados do pagamento para edição:", error); //
-    alert("Erro ao carregar dados do pagamento para edição: " + error.message); //
+    console.error("Erro ao carregar dados do pagamento para edição:", error);
+    alert("Erro ao carregar dados do pagamento para edição: " + error.message);
   }
 }
 
 async function handleEdicaoPagamento(e) {
-  e.preventDefault(); //
+  e.preventDefault();
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (usuario.tipo !== "admin" && usuario.tipo !== "financeiro") {
+    alert("Você não tem permissão para atualizar pagamentos.");
+    return;
+  }
 
-  const id = document.getElementById("edit_id_pagamento").value; //
-  const status = document.getElementById("edit_status").value; //
-  const valor = parseFloat(document.getElementById("edit_valor").value); //
+  const id = document.getElementById("edit_id_pagamento").value;
+  const status = document.getElementById("edit_status").value;
+  const valor = parseFloat(document.getElementById("edit_valor").value);
 
-  const pagamentoData = { //
-    valor_total: valor, //
-    status: status, //
+  const pagamentoData = {
+    valor_total: valor,
+    status: status,
   };
 
   try {
-    const response = await fetch(`${API_BASE_URL}/pagamentos/${id}`, { //
-      method: "PUT", //
-      headers: { //
-        "Content-Type": "application/json", //
+    const response = await fetch(`${API_BASE_URL}/pagamentos/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify(pagamentoData), //
+      body: JSON.stringify(pagamentoData),
     });
 
-    const result = await response.json(); //
+    const result = await response.json();
 
-    if (!response.ok) { //
-      throw new Error(result.message || `Erro HTTP! status: ${response.status}`); //
+    if (!response.ok) {
+      throw new Error(result.message || `Erro HTTP! status: ${response.status}`);
     }
 
-    alert(result.message || "Pagamento atualizado com sucesso!"); //
-    this.reset(); //
-    document.getElementById("formEdicao").style.display = "none"; //
-    listarPagamentos(); //
+    alert(result.message || "Pagamento atualizado com sucesso!");
+    this.reset();
+    document.getElementById("formEdicao").style.display = "none";
+    listarPagamentos();
   } catch (error) {
-    console.error("Erro ao atualizar pagamento:", error); //
-    alert("Erro ao atualizar pagamento: " + error.message); //
+    console.error("Erro ao atualizar pagamento:", error);
+    alert("Erro ao atualizar pagamento: " + error.message);
   }
 }
 
 async function deletarPagamento(id) {
-  if (!confirm("Tem certeza que deseja excluir este pagamento?")) { //
-    return; //
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (usuario.tipo !== "admin" && usuario.tipo !== "financeiro") {
+    alert("Você não tem permissão para excluir pagamentos.");
+    return;
+  }
+  if (!confirm("Tem certeza que deseja excluir este pagamento?")) {
+    return;
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/pagamentos/${id}`, { //
-      method: "DELETE", //
+    const response = await fetch(`${API_BASE_URL}/pagamentos/${id}`, {
+      method: "DELETE",
     });
 
-    const result = await response.json(); //
+    const result = await response.json();
 
-    if (!response.ok) { //
-      throw new Error(result.message || `Erro HTTP! status: ${response.status}`); //
+    if (!response.ok) {
+      throw new Error(result.message || `Erro HTTP! status: ${response.status}`);
     }
 
-    alert(result.message || "Pagamento excluído com sucesso!"); //
-    listarPagamentos(); //
+    alert(result.message || "Pagamento excluído com sucesso!");
+    listarPagamentos();
   } catch (error) {
-    console.error("Erro ao deletar pagamento:", error); //
-    alert("Erro ao deletar pagamento: " + error.message); //
+    console.error("Erro ao deletar pagamento:", error);
+    alert("Erro ao deletar pagamento: " + error.message);
   }
 }
 
 function cancelarEdicao() {
-  document.getElementById("formEdicao").reset(); //
-  document.getElementById("formEdicao").style.display = "none"; //
+  document.getElementById("formEdicao").reset();
+  document.getElementById("formEdicao").style.display = "none";
 }

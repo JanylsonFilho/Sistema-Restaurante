@@ -7,8 +7,7 @@
  </head>
  <body>
 
-      <!-- Navbar reutilizável -->
-  <nav class="navbar">
+      <nav class="navbar">
     <span class="logo">Sistema Restaurante</span>
     <ul>
       <li><a href="painel.html">Início</a></li>
@@ -23,16 +22,17 @@
 
   <h1>Cadastro de Mesas</h1>
  
-
   <form id="formMesa">
-  <input type="number" id="num_mesa" placeholder="Número da Mesa" required />
-  <input type="number" id="capacidade" placeholder="Capacidade" required />
-  <input type="text" id="nome_garcom" placeholder="Nome do Garçom" required />
-  <input type="text" id="disponibilidade" value="Disponível" readonly>
-  <button type="submit">Cadastrar</button>
+    <input type="number" id="num_mesa" placeholder="Número da Mesa" required />
+    <input type="number" id="capacidade" placeholder="Capacidade" required />
+    <input type="text" id="nome_garcom" placeholder="Nome do Garçom" required />
+    <select id="disponibilidade" required>
+      <option value="Disponível">Disponível</option>
+      <option value="Indisponível">Indisponível</option>
+    </select>
+    <button type="submit">Cadastrar</button>
   </form>
-<!-- Filtros -->
-  <div class = "filters">
+<div class = "filters">
     <label for="filtroMesaForm">Buscar por Garçom:</label>
     <input type="text" id="filtroMesaForm" placeholder="Digite o nome do garçom..." />
 
@@ -51,17 +51,16 @@
 
   <h2>Lista de Mesas</h2>
   <table border="1">
-  <thead>
-  <tr>
-  <th>ID</th>
-  <th>Número da Mesa</th>
-  <th>Capacidade</th>
-  <th>Garçom Responsável</th>
-  <th>Disponibilidade</th>
-  <th>Ações</th>
-  </tr>
-  </thead>
-  <tbody id="listaMesas"></tbody>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Número da Mesa</th>
+        <th>Capacidade</th>
+        <th>Garçom Responsável</th>
+        <th>Disponibilidade</th>
+        <th id="thAcoesMesa">Ações</th> </tr>
+    </thead>
+    <tbody id="listaMesas"></tbody>
   </table>
  
 

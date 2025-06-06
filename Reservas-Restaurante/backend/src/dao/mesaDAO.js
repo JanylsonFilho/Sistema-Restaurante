@@ -85,12 +85,12 @@ class mesaDAO {
     const [rows] = await pool.execute(query, params)
     return rows
   }
-
+/*
   async updateDisponibilidade(id, disponibilidade) {
     const [result] = await pool.execute("UPDATE Mesa SET disponibilidade = ? WHERE id_mesa = ?", [disponibilidade, id])
     return result.affectedRows > 0
   }
-
+*/
   async getMesasComReservasAtivas() {
     const query = `
       SELECT m.*, r.data_reserva, r.nome_cliente, r.num_pessoas

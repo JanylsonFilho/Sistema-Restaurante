@@ -1,17 +1,33 @@
+// Reservas-Restaurante/js/reserva.js
 const API_BASE_URL = "http://localhost:3000/api";
 let idReservaEditando = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
   const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
-  if (!usuario || (usuario.tipo !== "admin" && usuario.tipo !== "recepcionista")) {
+  if (!usuario) { // Se não houver usuário logado, redireciona
     alert("Acesso não autorizado.");
     window.location.href = "login.html";
+    return;
   }
+
+  // Obter referências aos elementos HTML
+  const formReserva = document.getElementById("formReserva");
+  const thAcoes = document.getElementById("thAcoesReserva");
+
+  // Esconder/mostrar formulário e coluna 'Ações' na tabela
+  if (usuario.tipo === "admin" || usuario.tipo === "recepcionista") {
+    if (formReserva) formReserva.style.display = "flex";
+    if (thAcoes) thAcoes.style.display = "table-cell";
+  } else {
+    if (formReserva) formReserva.style.display = "none";
+    if (thAcoes) thAcoes.style.display = "none";
+  }
+
   listarReservas();
-  carregarMesasDisponiveis(); // Carrega mesas ao abrir a tela
+  carregarMesasDisponiveis();
 });
 
-// Funções de conversão de data
+// Funções de conversão de data (mantidas como estão)
 function formatarDataParaExibicao(dataOriginal) {
   if (!dataOriginal) return "";
 
@@ -54,7 +70,6 @@ function formatarDataParaEnvio(dataBr) {
   return dataBr;
 }
 
-// NOVO: Carregar mesas disponíveis ao selecionar data ou número de pessoas
 async function carregarMesasDisponiveis() {
   const dataReserva = document.getElementById("data_reserva").value;
   const numPessoas = parseInt(document.getElementById("num_pessoas")?.value) || 1;
@@ -103,6 +118,12 @@ document.getElementById("num_pessoas").addEventListener("change", carregarMesasD
 document.getElementById("formReserva").addEventListener("submit", async function (e) {
   e.preventDefault();
 
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (usuario.tipo !== "admin" && usuario.tipo !== "recepcionista") {
+    alert("Você não tem permissão para cadastrar ou editar reservas.");
+    return;
+  }
+
   const cpf_cliente = document.getElementById("cpf_cliente").value;
   const num_mesa = parseInt(document.getElementById("num_mesa").value);
   const data_reserva = document.getElementById("data_reserva").value;
@@ -150,7 +171,7 @@ document.getElementById("formReserva").addEventListener("submit", async function
     this.reset();
     idReservaEditando = null;
     listarReservas();
-    carregarMesasDisponiveis(); // Atualiza mesas após criar/editar reserva
+    carregarMesasDisponiveis();
   } catch (error) {
     console.error(errorMessage, error);
     alert(`${errorMessage} ${error.message}`);
@@ -158,6 +179,7 @@ document.getElementById("formReserva").addEventListener("submit", async function
 });
 
 async function listarReservas() {
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado")); // Obter usuário novamente
   const lista = document.getElementById("listaReservas");
   lista.innerHTML = "";
 
@@ -185,9 +207,16 @@ async function listarReservas() {
     const reservas = data.data;
 
     reservas.forEach((reserva) => {
-      const editarBtn = reserva.status.toLowerCase() === "ativa"
-        ? `<button onclick="editarReserva(${reserva.id_reserva})">Editar</button>`
-        : "";
+      let botoesAcao = '';
+      if (usuario.tipo === "admin" || usuario.tipo === "recepcionista") {
+        const editarBtn = reserva.status.toLowerCase() === "ativa"
+          ? `<button onclick="editarReserva(${reserva.id_reserva})">Editar</button>`
+          : "";
+        botoesAcao = `
+          <button onclick="deletarReserva(${reserva.id_reserva})">Excluir</button>
+          ${editarBtn}
+        `;
+      }
 
       const dataFormatada = formatarDataParaExibicao(reserva.data_reserva);
       const horaFormatada = reserva.hora_reserva || "";
@@ -202,9 +231,8 @@ async function listarReservas() {
           <td>${horaFormatada}</td>
           <td>${reserva.num_pessoas}</td>
           <td>${reserva.status}</td>
-          <td>
-            <button onclick="deletarReserva(${reserva.id_reserva})">Excluir</button>
-            ${editarBtn}
+          <td ${!(usuario.tipo === "admin" || usuario.tipo === "recepcionista") ? 'style="display:none;"' : ''}>
+            ${botoesAcao}
           </td>
         </tr>`;
       lista.innerHTML += row;
@@ -216,6 +244,12 @@ async function listarReservas() {
 }
 
 async function editarReserva(id) {
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (usuario.tipo !== "admin" && usuario.tipo !== "recepcionista") {
+    alert("Você não tem permissão para editar reservas.");
+    return;
+  }
+
   try {
     const response = await fetch(`${API_BASE_URL}/reservas/${id}`);
     if (!response.ok) {
@@ -235,7 +269,7 @@ async function editarReserva(id) {
 
       idReservaEditando = id;
       alert("Modo de edição ativado para a reserva: " + id);
-      carregarMesasDisponiveis(); // Atualiza mesas ao editar
+      carregarMesasDisponiveis();
     }
   } catch (error) {
     console.error("Erro ao carregar dados da reserva para edição:", error);
@@ -244,6 +278,12 @@ async function editarReserva(id) {
 }
 
 async function deletarReserva(id) {
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
+  if (usuario.tipo !== "admin" && usuario.tipo !== "recepcionista") {
+    alert("Você não tem permissão para excluir reservas.");
+    return;
+  }
+
   if (!confirm("Tem certeza que deseja excluir esta reserva?")) {
     return;
   }
@@ -261,7 +301,7 @@ async function deletarReserva(id) {
 
     alert(result.message || "Reserva excluída com sucesso!");
     listarReservas();
-    carregarMesasDisponiveis(); // Atualiza mesas após deletar reserva
+    carregarMesasDisponiveis();
   } catch (error) {
     console.error("Erro ao deletar reserva:", error);
     alert("Erro ao deletar reserva: " + error.message);

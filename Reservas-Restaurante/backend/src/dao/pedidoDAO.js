@@ -49,6 +49,14 @@ class pedidoDAO {
     return result.affectedRows > 0
   }
 
+  async findPedidosAtivosPorReserva(numero_mesa, data_reserva) {
+    const [rows] = await pool.execute(
+      "SELECT * FROM Pedido WHERE numero_mesa = ? AND data_reserva = ? AND status = 'Aberto'",
+      [numero_mesa, data_reserva]
+    );
+    return rows;
+  }
+
   async search(filters) {
     let query = "SELECT * FROM Pedido WHERE 1=1"
     const params = []

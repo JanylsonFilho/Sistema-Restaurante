@@ -1,23 +1,34 @@
-const usuarios = [
-  { email: "admin@rest.com", senha: "admin123", tipo: "admin" },
-  { email: "recep@rest.com", senha: "recep123", tipo: "recepcionista" },
-  { email: "garcom@rest.com", senha: "garcom123", tipo: "garcom" },
-  { email: "fin@rest.com", senha: "fin123", tipo: "financeiro" }
-];
+const API_BASE_URL = "http://localhost:3000/api";
 
-document.getElementById("formLogin").addEventListener("submit", function (e) {
+document.getElementById("formLogin").addEventListener("submit", async function (e) {
   e.preventDefault();
 
   const email = document.getElementById("email").value.trim();
   const senha = document.getElementById("senha").value.trim();
   const mensagemErro = document.getElementById("mensagemErro");
 
-  const usuario = usuarios.find(u => u.email === email && u.senha === senha);
+  mensagemErro.textContent = ""; 
 
-  if (usuario) {
-    localStorage.setItem("usuarioLogado", JSON.stringify(usuario));
-    window.location.href = "painel.html";
-  } else {
-    mensagemErro.textContent = "Email ou senha inválidos.";
+  try {
+    const response = await fetch(`${API_BASE_URL}/usuarios/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, senha }),
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+    
+      localStorage.setItem("usuarioLogado", JSON.stringify(result.data)); 
+      window.location.href = "painel.html"; 
+    } else {
+      mensagemErro.textContent = result.message || "Erro desconhecido ao fazer login.";
+    }
+  } catch (error) {
+    console.error("Erro ao tentar login:", error);
+    mensagemErro.textContent = "Erro de conexão. Tente novamente mais tarde.";
   }
 });

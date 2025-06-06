@@ -16,6 +16,7 @@ const reservaRoutes = require("./routes/reservaRoutes")
 const cardapioRoutes = require("./routes/cardapioRoutes")
 const pedidoRoutes = require("./routes/pedidoRoutes")
 const pagamentoRoutes = require("./routes/pagamentoRoutes")
+const usuarioRoutes = require("./routes/usuarioRoutes")
 
 // Usar rotas
 app.use("/api/clientes", clienteRoutes)
@@ -24,6 +25,7 @@ app.use("/api/reservas", reservaRoutes)
 app.use("/api/cardapio", cardapioRoutes)
 app.use("/api/pedidos", pedidoRoutes)
 app.use("/api/pagamentos", pagamentoRoutes)
+app.use("/api/usuarios", usuarioRoutes)
 
 // Rota de teste
 app.get("/", (req, res) => {

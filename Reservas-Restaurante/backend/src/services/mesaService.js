@@ -44,30 +44,39 @@ class mesaService{
         }
     }
 
-    async updateMesa(id,mesaData){
-        try{
-            //verifica se mesa existe
-            await this.getMesasById(id)
-            const errors = MesaModel.validate(mesaData)
-            if(errors.length>0){
-                throw new Error(`Dados inválidos: ${errors.join(", ")}`)
-            }
-
-            //verificar se numero da mesa ja existe em outra mesa
-            const mesaExistente = await mesaDAO.findByNumero(mesaData.num_mesa)
-            if(mesaExistente && mesaExistente.id_mesa !== Number.parseInt(id)) {
-                throw new Error("Número da mesa já cadastrado para outra mesa")
-            }
-            const updated = await mesaDAO.update(id,mesaData)
-            if(!updated){
-                throw new Error("Falha ao atualizar mesa")
-            }
-            return await mesaDAO.findById(id)
-        } catch(error){
-             throw new Error(`Erro ao atualizar mesa: ${error.message}`)
+   async updateMesa(id, mesaData) {
+    try {
+        // verifica se mesa existe
+        await this.getMesasById(id);
+        const errors = MesaModel.validate(mesaData);
+        if (errors.length > 0) {
+            throw new Error(`Dados inválidos: ${errors.join(", ")}`);
         }
-    }
 
+        // verificar se numero da mesa ja existe em outra mesa
+        const mesaExistente = await mesaDAO.findByNumero(mesaData.num_mesa);
+        if (mesaExistente && mesaExistente.id_mesa !== Number.parseInt(id)) {
+            throw new Error("Número da mesa já cadastrado para outra mesa");
+        }
+
+        // NOVO: Se for tornar indisponível, verifica reservas ativas
+        if (mesaData.disponibilidade === "Indisponível") {
+            const mesasComReservasAtivas = await mesaDAO.getMesasComReservasAtivas();
+            const mesaComReservaAtiva = mesasComReservasAtivas.find(m => m.id_mesa === Number.parseInt(id));
+            if (mesaComReservaAtiva) {
+                throw new Error("Não é possível tornar a mesa indisponível para manutenção enquanto houver reservas ativas para ela.");
+            }
+        }
+
+        const updated = await mesaDAO.update(id, mesaData);
+        if (!updated) {
+            throw new Error("Falha ao atualizar mesa");
+        }
+        return await mesaDAO.findById(id);
+    } catch (error) {
+        throw new Error(`Erro ao atualizar mesa: ${error.message}`);
+    }
+}
     async deleteMesa(id){
         try{
             //verifica existencia da mesa
@@ -114,6 +123,7 @@ class mesaService{
 //problema aqui no updateDisponibilidade , não ta tratando ainda o caso de nao poder deixar 
 // uma mesa virar indisponivel se ela tiver uma reserva ativa 
 
+ /*   
     async updateDisponibilidade(id, disponibilidade) {
         try {
             // Buscar a mesa pelo ID para pegar o número correto
@@ -125,14 +135,13 @@ class mesaService{
                 throw new Error("Disponibilidade deve ser: Disponível ou Indisponível");
             }
 
-            // Se for tornar indisponível, verifica se há reservas ativas
+            // Se for tornar indisponível, verifica se há reservas ativas para esta mesa
             if (disponibilidade === "Indisponível") {
-                // Busca reservas ativas para a mesa (todas datas futuras e hoje)
-                const reservasAtivas = await reservaDAO.search({
-                    num_mesa: mesa.num_mesa, // Usa o número da mesa correto!
-                    status: "Ativa"
-                });
-                if (reservasAtivas && reservasAtivas.length > 0) {
+                // Usa a mesma lógica da exclusão para verificar reservas ativas
+                const mesasComReservasAtivas = await mesaDAO.getMesasComReservasAtivas();
+                const mesaComReservaAtiva = mesasComReservasAtivas.find(m => m.id_mesa === Number.parseInt(id));
+
+                if (mesaComReservaAtiva) {
                     throw new Error("Não é possível tornar a mesa indisponível para manutenção enquanto houver reservas ativas para ela.");
                 }
             }
@@ -147,6 +156,7 @@ class mesaService{
             throw new Error(`Erro ao atualizar disponibilidade: ${error.message}`);
         }
     }
+    */
 
     async getMesasComReservasAtivas() {
         try {

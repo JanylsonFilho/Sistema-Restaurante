@@ -128,6 +128,7 @@ class mesaController{
         }
     }
 
+   /*
     async updateDisponibilidade(req, res) {
         try {
             const { id } = req.params
@@ -146,6 +147,7 @@ class mesaController{
             })
         }
     }
+        */
 
 
     async getMesasComReservasAtivas(req, res) {
