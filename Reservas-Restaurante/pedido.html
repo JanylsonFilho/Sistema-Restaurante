@@ -4,20 +4,17 @@
   <meta charset="UTF-8" />
   <title>Pedidos</title>
   <link rel="stylesheet" href="css/style.css" />
-  
- 
 </head>
 <body>
   <script>
     const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
-    // Todos podem acessar a página, mas o controle de acesso aos elementos será feito via JS
     if (!usuario) {
       alert("Acesso não autorizado.");
       window.location.href = "login.html";
     }
   </script>
 
-    <nav class="navbar">
+  <nav class="navbar">
     <span class="logo">Sistema Restaurante</span>
     <ul>
       <li><a href="painel.html">Início</a></li>
@@ -33,16 +30,24 @@
   <h1>Registro de Pedido</h1>
 
   <form id="formPedido">
-    <label for="numero_mesa">Número da Mesa:</label>
-    <input type="number" id="numero_mesa" placeholder="Número da Mesa" required />
+    <label for="filtro_mesa_reserva">Número da Mesa (para filtrar reservas):</label>
+    <input type="number" id="filtro_mesa_reserva" placeholder="Número da Mesa" />
 
-    <label for="data_reserva_pedido">Data da Reserva:</label>
-    <input type="date" id="data_reserva_pedido" required />
+    <label for="filtro_data_reserva">Data da Reserva (para filtrar reservas):</label>
+    <input type="date" id="filtro_data_reserva" />
 
-    <label for="hora_reserva_pedido">Horário da Reserva:</label>
-    <select id="hora_reserva_pedido" required>
-      <option value="">Selecione mesa e data</option>
+    <label for="id_reserva_selecionada">Selecione a Reserva:</label>
+    <select id="id_reserva_selecionada" required>
+      <option value="">Filtrar mesa e data para ver reservas</option>
     </select>
+
+    <input type="hidden" id="nome_garcom_pedido" />
+    <input type="hidden" id="nome_cliente_pedido" />
+    <input type="hidden" id="cpf_cliente_pedido" />
+    <input type="hidden" id="num_mesa_pedido_oculto" />
+    <input type="hidden" id="data_reserva_pedido_oculto" />
+    <input type="hidden" id="hora_reserva_pedido_oculto" />
+
   </form>
 
   <h2>Cardápio</h2>
@@ -55,14 +60,14 @@
   <h2>Itens do Pedido</h2>
   <div id="itensPedido"></div>
   <p>Total: R$ <span id="totalPedido">0.00</span></p>
-  <button  id="finalizarPedidoBtn" type="button" onclick="finalizarPedido()">Finalizar Pedido</button>
+  <button id="finalizarPedidoBtn" type="button" onclick="finalizarPedido()">Finalizar Pedido</button>
 
 
   <div class="filters">
-    <label for="filtroData">Filtrar por data:</label>
+    <label for="filtroData">Filtrar Pedidos por Data da Reserva:</label>
     <input type="date" id="filtroData" />
 
-    <label for="filtroMesa">Filtrar por mesa:</label>
+    <label for="filtroMesa">Filtrar Pedidos por Número da Mesa:</label>
     <input type="number" id="filtroMesa" placeholder="Número da mesa" />
   </div>
 
@@ -71,7 +76,7 @@
     <thead>
       <tr>
         <th>ID Pedido</th>
-        <th>Número da Mesa</th>
+        <th>Nº Mesa</th>
         <th>Garçom</th>
         <th>Cliente</th>
         <th>CPF</th>
@@ -79,7 +84,8 @@
         <th>Horário da Reserva</th>
         <th>Total</th>
         <th>Status</th>
-        <th id="thAcoesPedido">Ações</th> </tr>
+        <th id="thAcoesPedido">Ações</th>
+      </tr>
     </thead>
     <tbody id="listaPedidos"></tbody>
   </table>

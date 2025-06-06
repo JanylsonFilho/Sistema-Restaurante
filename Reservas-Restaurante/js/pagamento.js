@@ -1,26 +1,22 @@
-// Reservas-Restaurante/js/pagamento.js
+// Reservas-Restaurante/js/pagamento.js (AJUSTADO PARA EXIBIÇÃO APÓS REMOÇÃO DO CAMPO NUM_MESA)
 const API_BASE_URL = "http://localhost:3000/api";
 
 document.addEventListener("DOMContentLoaded", () => {
   const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
-  if (!usuario) { // Se não houver usuário logado, redireciona
+  if (!usuario) {
     alert("Acesso não autorizado.");
     window.location.href = "login.html";
     return;
   }
 
-  // Obter referências aos elementos HTML
   const formEdicao = document.getElementById("formEdicao");
   const thAcoes = document.getElementById("thAcoesPagamento");
 
-  // Esconder/mostrar formulário e coluna 'Ações' na tabela
   if (usuario.tipo === "admin" || usuario.tipo === "financeiro") {
-    // Formulário de edição é inicialmente oculto, mas estará disponível para esses usuários
-    // Não alteramos o display aqui, apenas garantimos que a coluna de ações aparece
     if (thAcoes) thAcoes.style.display = "table-cell";
   } else {
-    if (formEdicao) formEdicao.style.display = "none"; // Oculta o formulário de edição
-    if (thAcoes) thAcoes.style.display = "none"; // Oculta a coluna 'Ações' para outros usuários
+    if (formEdicao) formEdicao.style.display = "none";
+    if (thAcoes) thAcoes.style.display = "none";
   }
 
   listarPagamentos();
@@ -53,7 +49,7 @@ async function listarPagamentos() {
     const pagamentos = data.data;
 
     pagamentos.forEach(p => {
-      const dataFormatada = p.data_reserva ? new Date(p.data_reserva).toLocaleDateString('pt-BR') : '';
+      const dataFormatada = p.data_reserva ? new Date(p.data_reserva + "T00:00:00").toLocaleDateString('pt-BR') : '';
       const horaFormatada = p.hora_reserva ? p.hora_reserva.substring(0, 5) : '';
 
       let botoesAcao = '';
@@ -64,11 +60,12 @@ async function listarPagamentos() {
         `;
       }
 
+      // ATENÇÃO: A célula para "Nº Mesa" foi removida, então a ordem das células abaixo mudou.
+      // Certifique-se de que o HTML também foi atualizado para corresponder a essa nova ordem.
       lista.innerHTML += `
         <tr>
           <td>${p.id_pagamento}</td>
           <td>${p.id_pedido}</td>
-          <td>${p.numero_mesa}</td>
           <td>${p.nome_cliente}</td>
           <td>${p.cpf_cliente}</td>
           <td>${dataFormatada}</td>
@@ -144,7 +141,7 @@ async function handleEdicaoPagamento(e) {
   };
 
   try {
-    const response = await fetch(`${API_BASE_URL}/pagamentos/${id}`, {
+    const response = await fetch(encodeURI(`${API_BASE_URL}/pagamentos/${id}`), { // Use encodeURI
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -179,7 +176,7 @@ async function deletarPagamento(id) {
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/pagamentos/${id}`, {
+    const response = await fetch(encodeURI(`${API_BASE_URL}/pagamentos/${id}`), { // Use encodeURI
       method: "DELETE",
     });
 

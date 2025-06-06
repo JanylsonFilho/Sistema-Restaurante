@@ -7,7 +7,6 @@
 </head>
 <body>
 
-    <!-- Navbar reutilizável -->
   <nav class="navbar">
     <span class="logo">Sistema Restaurante</span>
     <ul>
@@ -21,7 +20,21 @@
     </ul>
   </nav>
 
-  <a href="pedido.html">Voltar</a>
+  <a href="pedido.html">Voltar para Pedidos</a>
+
+  <h1>Detalhes do Pedido</h1>
+
+  <div style="background: #f8e5e1; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 1.1em; line-height: 1.6;">
+    <p><strong>ID do Pedido:</strong> <span id="pedidoId"></span></p>
+    <p><strong>ID da Reserva Associada:</strong> <span id="reservaId"></span></p>
+    <p><strong>Garçom Responsável:</strong> <span id="nomeGarcomPedido"></span></p>
+    <hr>
+    <h3>Informações da Reserva:</h3>
+    <p><strong>Número da Mesa:</strong> <span id="reservaNumMesa"></span></p>
+    <p><strong>Cliente:</strong> <span id="reservaNomeCliente"></span></p>
+    <p><strong>CPF do Cliente:</strong> <span id="reservaCpfCliente"></span></p>
+    <p><strong>Data e Hora da Reserva:</strong> <span id="reservaDataHora"></span></p>
+  </div>
 
   <h2>Itens do Pedido</h2>
   <table border="1">
@@ -36,9 +49,7 @@
     <tbody id="tabelaItens"></tbody>
   </table>
 
-  <p><strong>Total Geral:</strong> R$ <span id="totalGeral">0.00</span></p>
-
-
+  <p><strong>Total Geral do Pedido:</strong> R$ <span id="totalGeral">0.00</span></p>
 
   <script src="js/detalhes_pedido.js"></script>
 </body>

@@ -1,20 +1,18 @@
-// Reservas-Restaurante/js/reserva.js
 const API_BASE_URL = "http://localhost:3000/api";
 let idReservaEditando = null;
+let mesaAtualEditando = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
   const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
-  if (!usuario) { // Se não houver usuário logado, redireciona
+  if (!usuario) {
     alert("Acesso não autorizado.");
     window.location.href = "login.html";
     return;
   }
 
-  // Obter referências aos elementos HTML
   const formReserva = document.getElementById("formReserva");
   const thAcoes = document.getElementById("thAcoesReserva");
 
-  // Esconder/mostrar formulário e coluna 'Ações' na tabela
   if (usuario.tipo === "admin" || usuario.tipo === "recepcionista") {
     if (formReserva) formReserva.style.display = "flex";
     if (thAcoes) thAcoes.style.display = "table-cell";
@@ -27,7 +25,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   carregarMesasDisponiveis();
 });
 
-// Funções de conversão de data (mantidas como estão)
 function formatarDataParaExibicao(dataOriginal) {
   if (!dataOriginal) return "";
 
@@ -70,7 +67,20 @@ function formatarDataParaEnvio(dataBr) {
   return dataBr;
 }
 
-async function carregarMesasDisponiveis() {
+// Busca a capacidade real da mesa pelo número
+async function buscarCapacidadeMesa(num_mesa) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/mesas/search?num_mesa=${num_mesa}`);
+    const data = await response.json();
+    if (data.data && data.data.length > 0) {
+      return data.data[0].capacidade;
+    }
+  } catch (e) {}
+  return 0;
+}
+
+// Aceita mesaAtual como parâmetro opcional para edição
+async function carregarMesasDisponiveis(mesaAtual = null) {
   const dataReserva = document.getElementById("data_reserva").value;
   const numPessoas = parseInt(document.getElementById("num_pessoas")?.value) || 1;
   const selectMesa = document.getElementById("num_mesa");
@@ -92,7 +102,14 @@ async function carregarMesasDisponiveis() {
       throw new Error(data.message || "Erro ao buscar mesas disponíveis");
     }
 
-    if (data.data.length === 0) {
+    let mesasDisponiveis = data.data;
+
+    // Se estiver editando e a mesa atual não está disponível, adiciona ela no início
+    if (mesaAtual && !mesasDisponiveis.some(m => m.num_mesa == mesaAtual.num_mesa)) {
+      mesasDisponiveis = [mesaAtual, ...mesasDisponiveis];
+    }
+
+    if (mesasDisponiveis.length === 0) {
       const option = document.createElement("option");
       option.value = "";
       option.textContent = "Nenhuma mesa disponível";
@@ -100,20 +117,25 @@ async function carregarMesasDisponiveis() {
       return;
     }
 
-    data.data.forEach(mesa => {
+    mesasDisponiveis.forEach(mesa => {
       const option = document.createElement("option");
       option.value = mesa.num_mesa;
       option.textContent = `Mesa ${mesa.num_mesa} (${mesa.capacidade} lugares)`;
       selectMesa.appendChild(option);
     });
+
+    // Seleciona a mesa atual se estiver editando
+    if (mesaAtual) {
+      selectMesa.value = mesaAtual.num_mesa;
+    }
   } catch (error) {
     console.error("Erro ao carregar mesas disponíveis:", error);
     alert("Erro ao carregar mesas disponíveis: " + error.message);
   }
 }
 
-document.getElementById("data_reserva").addEventListener("change", carregarMesasDisponiveis);
-document.getElementById("num_pessoas").addEventListener("change", carregarMesasDisponiveis);
+document.getElementById("data_reserva").addEventListener("change", () => carregarMesasDisponiveis(mesaAtualEditando));
+document.getElementById("num_pessoas").addEventListener("change", () => carregarMesasDisponiveis(mesaAtualEditando));
 
 document.getElementById("formReserva").addEventListener("submit", async function (e) {
   e.preventDefault();
@@ -170,6 +192,7 @@ document.getElementById("formReserva").addEventListener("submit", async function
     alert(successMessage);
     this.reset();
     idReservaEditando = null;
+    mesaAtualEditando = null;
     listarReservas();
     carregarMesasDisponiveis();
   } catch (error) {
@@ -179,7 +202,7 @@ document.getElementById("formReserva").addEventListener("submit", async function
 });
 
 async function listarReservas() {
-  const usuario = JSON.parse(localStorage.getItem("usuarioLogado")); // Obter usuário novamente
+  const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
   const lista = document.getElementById("listaReservas");
   lista.innerHTML = "";
 
@@ -268,8 +291,11 @@ async function editarReserva(id) {
       document.getElementById("status").value = reserva.status;
 
       idReservaEditando = id;
+      // Buscar capacidade real da mesa antes de editar
+      const capacidadeMesa = await buscarCapacidadeMesa(reserva.num_mesa);
+      mesaAtualEditando = { num_mesa: reserva.num_mesa, capacidade: capacidadeMesa };
       alert("Modo de edição ativado para a reserva: " + id);
-      carregarMesasDisponiveis();
+      carregarMesasDisponiveis(mesaAtualEditando);
     }
   } catch (error) {
     console.error("Erro ao carregar dados da reserva para edição:", error);

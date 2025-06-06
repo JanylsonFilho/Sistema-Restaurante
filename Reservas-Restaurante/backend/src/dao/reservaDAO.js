@@ -1,14 +1,15 @@
-const { pool } = require("../config/database")
+// backend/src/dao/reservaDAO.js (ATUALIZADO)
+const { pool } = require("../config/database");
 
 class reservaDAO {
   async findAll() {
-    const [rows] = await pool.execute("SELECT * FROM Reserva ORDER BY data_reserva DESC, hora_reserva DESC")
-    return rows
+    const [rows] = await pool.execute("SELECT * FROM Reserva ORDER BY data_reserva DESC, hora_reserva DESC");
+    return rows;
   }
 
   async findById(id) {
-    const [rows] = await pool.execute("SELECT * FROM Reserva WHERE id_reserva = ?", [id])
-    return rows[0]
+    const [rows] = await pool.execute("SELECT * FROM Reserva WHERE id_reserva = ?", [id]);
+    return rows[0];
   }
 
   async create(reserva) {
@@ -22,14 +23,14 @@ class reservaDAO {
       hora_reserva,
       num_pessoas,
       status,
-    } = reserva
+    } = reserva;
 
     const [result] = await pool.execute(
-      `INSERT INTO Reserva (id_cliente, nome_cliente, cpf_cliente, id_mesa, num_mesa, data_reserva, hora_reserva, num_pessoas, status) 
+      `INSERT INTO Reserva (id_cliente, nome_cliente, cpf_cliente, id_mesa, num_mesa, data_reserva, hora_reserva, num_pessoas, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [id_cliente, nome_cliente, cpf_cliente, id_mesa, num_mesa, data_reserva, hora_reserva, num_pessoas, status],
-    )
-    return result.insertId
+    );
+    return result.insertId;
   }
 
   async update(id, reserva) {
@@ -43,109 +44,115 @@ class reservaDAO {
       hora_reserva,
       num_pessoas,
       status,
-    } = reserva
+    } = reserva;
 
     const [result] = await pool.execute(
-      `UPDATE Reserva SET id_cliente = ?, nome_cliente = ?, cpf_cliente = ?, id_mesa = ?, 
+      `UPDATE Reserva SET id_cliente = ?, nome_cliente = ?, cpf_cliente = ?, id_mesa = ?,
        num_mesa = ?, data_reserva = ?, hora_reserva = ?, num_pessoas = ?, status = ? WHERE id_reserva = ?`,
       [id_cliente, nome_cliente, cpf_cliente, id_mesa, num_mesa, data_reserva, hora_reserva, num_pessoas, status, id],
-    )
-    return result.affectedRows > 0
+    );
+    return result.affectedRows > 0;
   }
 
   async delete(id) {
-    const [result] = await pool.execute("DELETE FROM Reserva WHERE id_reserva = ?", [id])
-    return result.affectedRows > 0
+    const [result] = await pool.execute("DELETE FROM Reserva WHERE id_reserva = ?", [id]);
+    return result.affectedRows > 0;
   }
 
   async findByMesaDataAtiva(id_mesa, data_reserva) {
     const [rows] = await pool.execute(
       "SELECT * FROM Reserva WHERE id_mesa = ? AND data_reserva = ? AND status = 'Ativa'",
       [id_mesa, data_reserva],
-    )
-    return rows
+    );
+    return rows;
   }
 
   async findByMesaDataStatus(num_mesa, data_reserva, status) {
     const [rows] = await pool.execute(
       "SELECT * FROM Reserva WHERE num_mesa = ? AND data_reserva = ? AND status = ?",
       [num_mesa, data_reserva, status]
-    )
-    return rows
+    );
+    return rows;
   }
 
-  // NOVO: Buscar reserva por mesa, data, hora e status
   async findByMesaDataHoraStatus(num_mesa, data_reserva, hora_reserva, status) {
     const [rows] = await pool.execute(
       "SELECT * FROM Reserva WHERE num_mesa = ? AND data_reserva = ? AND hora_reserva = ? AND status = ?",
       [num_mesa, data_reserva, hora_reserva, status]
-    )
-    return rows
+    );
+    return rows;
   }
 
+  // Este método pode ser removido, pois o update genérico da reserva no service já cobre isso
+  /*
   async updateStatusByMesaAndData(num_mesa, data_reserva, status) {
     const [result] = await pool.execute("UPDATE Reserva SET status = ? WHERE num_mesa = ? AND data_reserva = ?", [
       status,
       num_mesa,
       data_reserva,
-    ])
-    return result.affectedRows > 0
+    ]);
+    return result.affectedRows > 0;
   }
+  */
 
+  // Este método pode ser removido ou alterado para usar id_reserva se for o caso
+  // O service de pedido agora fará um `update` completo na reserva
+  /*
   async updateStatusByMesaDataHora(num_mesa, data_reserva, hora_reserva, status) {
     const [result] = await pool.execute(
       "UPDATE Reserva SET status = ? WHERE num_mesa = ? AND data_reserva = ? AND hora_reserva = ?",
       [status, num_mesa, data_reserva, hora_reserva],
-    )
-    return result.affectedRows > 0
+    );
+    return result.affectedRows > 0;
   }
+  */
 
   async search(filters) {
-    let query = "SELECT * FROM Reserva WHERE 1=1"
-    const params = []
+    let query = "SELECT * FROM Reserva WHERE 1=1";
+    const params = [];
 
     if (filters.nome_cliente) {
-      query += " AND nome_cliente LIKE ?"
-      params.push(`%${filters.nome_cliente}%`)
+      query += " AND nome_cliente LIKE ?";
+      params.push(`%${filters.nome_cliente}%`);
     }
 
     if (filters.cpf_cliente) {
-      query += " AND cpf_cliente LIKE ?"
-      params.push(`%${filters.cpf_cliente}%`)
+      query += " AND cpf_cliente LIKE ?";
+      params.push(`%${filters.cpf_cliente}%`);
     }
 
     if (filters.data_reserva) {
-      query += " AND data_reserva = ?"
-      params.push(filters.data_reserva)
+      query += " AND data_reserva = ?";
+      params.push(filters.data_reserva);
     }
 
     if (filters.hora_reserva) {
-      query += " AND hora_reserva = ?"
-      params.push(filters.hora_reserva)
+      query += " AND hora_reserva = ?";
+      params.push(filters.hora_reserva);
     }
 
     if (filters.status) {
-      query += " AND status LIKE ?"
-      params.push(`%${filters.status}%`)
+      query += " AND status LIKE ?";
+      params.push(`%${filters.status}%`);
     }
 
     if (filters.num_mesa) {
-      query += " AND num_mesa = ?"
-      params.push(filters.num_mesa)
+      query += " AND num_mesa = ?";
+      params.push(filters.num_mesa);
     }
 
-    query += " ORDER BY data_reserva DESC, hora_reserva DESC"
+    query += " ORDER BY data_reserva DESC, hora_reserva DESC";
 
-    const [rows] = await pool.execute(query, params)
-    return rows
+    const [rows] = await pool.execute(query, params);
+    return rows;
   }
 
   async findAtivas() {
     const [rows] = await pool.execute(
       "SELECT * FROM Reserva WHERE status = 'Ativa' ORDER BY data_reserva, hora_reserva",
-    )
-    return rows
+    );
+    return rows;
   }
 }
 
-module.exports = new reservaDAO()
+module.exports = new reservaDAO();

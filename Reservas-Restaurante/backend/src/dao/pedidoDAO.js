@@ -1,91 +1,138 @@
-const { pool } = require("../config/database")
+// backend/src/dao/pedidoDAO.js (ATUALIZADO)
+const { pool } = require("../config/database");
 
 class pedidoDAO {
   async findAll() {
-    const [rows] = await pool.execute("SELECT * FROM Pedido ORDER BY id_pedido DESC")
-    return rows
+    // Agora faz JOIN com Reserva para obter detalhes do cliente e da mesa
+    const [rows] = await pool.execute(`
+      SELECT
+        p.id_pedido,
+        p.total,
+        p.status,
+        p.nome_garcom,
+        r.id_reserva,
+        r.num_mesa,
+        r.nome_cliente,
+        r.cpf_cliente,
+        r.data_reserva,
+        r.hora_reserva
+      FROM Pedido p
+      JOIN Reserva r ON p.id_reserva = r.id_reserva
+      ORDER BY p.id_pedido DESC
+    `);
+    return rows;
   }
 
   async findById(id) {
-    const [rows] = await pool.execute("SELECT * FROM Pedido WHERE id_pedido = ?", [id])
-    return rows[0]
+    const [rows] = await pool.execute(`
+      SELECT
+        p.id_pedido,
+        p.total,
+        p.status,
+        p.nome_garcom,
+        r.id_reserva,
+        r.num_mesa,
+        r.nome_cliente,
+        r.cpf_cliente,
+        r.data_reserva,
+        r.hora_reserva
+      FROM Pedido p
+      JOIN Reserva r ON p.id_reserva = r.id_reserva
+      WHERE p.id_pedido = ?
+    `, [id]);
+    return rows[0];
   }
 
   async create(pedido) {
-    const { numero_mesa, total, status, nome_cliente, cpf_cliente, data_reserva, hora_reserva, nome_garcom } = pedido
-
+    // Apenas id_reserva, total, status e nome_garcom são inseridos diretamente
+    const { id_reserva, total, status, nome_garcom } = pedido;
     const [result] = await pool.execute(
-      `INSERT INTO Pedido (numero_mesa, total, status, nome_cliente, cpf_cliente, 
-       data_reserva, hora_reserva, nome_garcom) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [numero_mesa, total, status, nome_cliente, cpf_cliente, data_reserva, hora_reserva, nome_garcom],
-    )
-    return result.insertId
+      `INSERT INTO Pedido (id_reserva, total, status, nome_garcom)
+       VALUES (?, ?, ?, ?)`,
+      [id_reserva, total, status, nome_garcom]
+    );
+    return result.insertId;
   }
 
   async update(id, pedido) {
-    const { numero_mesa, total, status, nome_cliente, cpf_cliente, data_reserva, hora_reserva, nome_garcom } = pedido
-
+    // Apenas id_reserva, total, status e nome_garcom são atualizados diretamente
+    const { id_reserva, total, status, nome_garcom } = pedido;
     const [result] = await pool.execute(
-      `UPDATE Pedido SET numero_mesa = ?, total = ?, status = ?, 
-       nome_cliente = ?, cpf_cliente = ?, data_reserva = ?, hora_reserva = ?, nome_garcom = ? 
+      `UPDATE Pedido SET id_reserva = ?, total = ?, status = ?, nome_garcom = ?
        WHERE id_pedido = ?`,
-      [numero_mesa, total, status, nome_cliente, cpf_cliente, data_reserva, hora_reserva, nome_garcom, id],
-    )
-    return result.affectedRows > 0
+      [id_reserva, total, status, nome_garcom, id]
+    );
+    return result.affectedRows > 0;
   }
 
   async delete(id) {
-    const [result] = await pool.execute("DELETE FROM Pedido WHERE id_pedido = ?", [id])
-    return result.affectedRows > 0
+    const [result] = await pool.execute("DELETE FROM Pedido WHERE id_pedido = ?", [id]);
+    return result.affectedRows > 0;
   }
 
   async updateStatus(id, status) {
-    const [result] = await pool.execute("UPDATE Pedido SET status = ? WHERE id_pedido = ?", [status, id])
-    return result.affectedRows > 0
+    const [result] = await pool.execute("UPDATE Pedido SET status = ? WHERE id_pedido = ?", [status, id]);
+    return result.affectedRows > 0;
   }
 
   async updateTotal(id, total) {
-    const [result] = await pool.execute("UPDATE Pedido SET total = ? WHERE id_pedido = ?", [total, id])
-    return result.affectedRows > 0
+    const [result] = await pool.execute("UPDATE Pedido SET total = ? WHERE id_pedido = ?", [total, id]);
+    return result.affectedRows > 0;
   }
 
-  async findPedidosAtivosPorReserva(numero_mesa, data_reserva) {
+  async findPedidosAtivosPorReserva(id_reserva) {
     const [rows] = await pool.execute(
-      "SELECT * FROM Pedido WHERE numero_mesa = ? AND data_reserva = ? AND status = 'Aberto'",
-      [numero_mesa, data_reserva]
+      "SELECT * FROM Pedido WHERE id_reserva = ? AND status = 'Aberto'",
+      [id_reserva]
     );
     return rows;
   }
 
   async search(filters) {
-    let query = "SELECT * FROM Pedido WHERE 1=1"
-    const params = []
+    let query = `
+      SELECT
+        p.id_pedido,
+        p.total,
+        p.status,
+        p.nome_garcom,
+        r.id_reserva,
+        r.num_mesa,
+        r.nome_cliente,
+        r.cpf_cliente,
+        r.data_reserva,
+        r.hora_reserva
+      FROM Pedido p
+      JOIN Reserva r ON p.id_reserva = r.id_reserva
+      WHERE 1=1
+    `;
+    const params = [];
 
-    if (filters.data_reserva) {
-      query += " AND data_reserva = ?"
-      params.push(filters.data_reserva)
+    if (filters.id_reserva) {
+      query += " AND r.id_reserva = ?";
+      params.push(filters.id_reserva);
+    }
+    if (filters.data_reserva) { // Agora filtra pela data da RESERVA
+      query += " AND r.data_reserva = ?";
+      params.push(filters.data_reserva);
+    }
+    if (filters.numero_mesa) { // Agora filtra pelo número da MESA da RESERVA
+      query += " AND r.num_mesa = ?";
+      params.push(filters.numero_mesa);
+    }
+    if (filters.status) { // Status do PEDIDO
+      query += " AND p.status = ?";
+      params.push(filters.status);
+    }
+    if (filters.nome_cliente) { // Nome do CLIENTE da RESERVA
+      query += " AND r.nome_cliente LIKE ?";
+      params.push(`%${filters.nome_cliente}%`);
     }
 
-    if (filters.numero_mesa) {
-      query += " AND numero_mesa = ?"
-      params.push(filters.numero_mesa)
-    }
+    query += " ORDER BY p.id_pedido DESC";
 
-    if (filters.status) {
-      query += " AND status = ?"
-      params.push(filters.status)
-    }
-
-    if (filters.nome_cliente) {
-      query += " AND nome_cliente LIKE ?"
-      params.push(`%${filters.nome_cliente}%`)
-    }
-
-    query += " ORDER BY id_pedido DESC"
-
-    const [rows] = await pool.execute(query, params)
-    return rows
+    const [rows] = await pool.execute(query, params);
+    return rows;
   }
 }
 
-module.exports = new pedidoDAO()
+module.exports = new pedidoDAO();

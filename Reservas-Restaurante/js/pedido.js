@@ -1,16 +1,13 @@
-// Reservas-Restaurante/js/pedido.js
+// Reservas-Restaurante/js/pedido.js (CORRIGIDO E ATUALIZADO)
 const API_BASE_URL = "http://localhost:3000/api";
 
 let itensPedidoAtuais = [];
 let totalPedidoAtual = 0;
 let idPedidoEditando = null;
 
-let reservasAtivasDisponiveis = [];
-let horaReservaSelecionada = "";
-
 document.addEventListener("DOMContentLoaded", async () => {
   const usuario = JSON.parse(localStorage.getItem("usuarioLogado"));
-  if (!usuario) { // Se não houver usuário logado, redireciona
+  if (!usuario) {
     alert("Acesso não autorizado.");
     window.location.href = "login.html";
     return;
@@ -23,14 +20,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   const cardapioContainer = document.getElementById("cardapio-container");
   const filtrosCardapioPedido = document.getElementById("filtrosCardapioPedido");
   const itensPedidoDiv = document.getElementById("itensPedido");
-  const totalPedidoP = document.getElementById("totalPedido").parentNode; // P element containing total
+  const totalPedidoP = document.getElementById("totalPedido").parentNode;
 
   // Esconder/mostrar formulário, botão de finalizar e coluna 'Ações' na tabela
   if (usuario.tipo === "admin" || usuario.tipo === "garcom") {
     if (formPedido) formPedido.style.display = "flex";
     if (finalizarPedidoBtn) finalizarPedidoBtn.style.display = "block";
     if (thAcoes) thAcoes.style.display = "table-cell";
-    if (cardapioContainer) cardapioContainer.style.display = "grid"; // Cardápio é para interação
+    if (cardapioContainer) cardapioContainer.style.display = "grid";
     if (filtrosCardapioPedido) filtrosCardapioPedido.style.display = "flex";
     if (itensPedidoDiv) itensPedidoDiv.style.display = "block";
     if (totalPedidoP) totalPedidoP.style.display = "block";
@@ -38,31 +35,34 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (formPedido) formPedido.style.display = "none";
     if (finalizarPedidoBtn) finalizarPedidoBtn.style.display = "none";
     if (thAcoes) thAcoes.style.display = "none";
-    if (cardapioContainer) cardapioContainer.style.display = "none"; // Oculta o cardápio
+    if (cardapioContainer) cardapioContainer.style.display = "none";
     if (filtrosCardapioPedido) filtrosCardapioPedido.style.display = "none";
     if (itensPedidoDiv) itensPedidoDiv.style.display = "none";
     if (totalPedidoP) totalPedidoP.style.display = "none";
   }
 
   await carregarCardapio();
-  listarPedidos();
+  listarPedidos(); // Lista os pedidos existentes
 
-  document.getElementById("numero_mesa").addEventListener("change", carregarReservasAtivasParaMesaData);
-  document.getElementById("data_reserva_pedido").addEventListener("change", carregarReservasAtivasParaMesaData);
+  // Eventos para filtrar e carregar as reservas no seletor
+  document.getElementById("filtro_mesa_reserva").addEventListener("input", carregarReservasAtivasParaSelecao);
+  document.getElementById("filtro_data_reserva").addEventListener("change", carregarReservasAtivasParaSelecao);
+  document.getElementById("id_reserva_selecionada").addEventListener("change", preencherDadosReservaSelecionada);
+
+  // Carregar as reservas iniciais (se houver filtros preenchidos ou não)
+  carregarReservasAtivasParaSelecao();
 });
 
 function formatarDataParaExibicao(dataOriginal) {
   if (!dataOriginal) return "";
-
   let dateObj;
   if (dataOriginal instanceof Date) {
     dateObj = dataOriginal;
   } else if (typeof dataOriginal === 'string') {
-    dateObj = new Date(dataOriginal);
+    dateObj = new Date(dataOriginal + "T00:00:00"); // Adiciona T00:00:00 para evitar problemas de fuso horário
   } else {
     return "Formato Inválido";
   }
-
   if (isNaN(dateObj.getTime())) {
     if (typeof dataOriginal === 'string' && dataOriginal.includes('-')) {
       const partes = dataOriginal.split('-');
@@ -88,7 +88,7 @@ document.getElementById("filtroCategoriaPedido")?.addEventListener("input", carr
 
 async function carregarCardapio() {
   const container = document.getElementById("cardapio-container");
-  if (!container || container.style.display === "none") return; // Não carrega se o container estiver oculto
+  if (!container || container.style.display === "none") return;
 
   container.innerHTML = "";
 
@@ -98,7 +98,7 @@ async function carregarCardapio() {
     const response = await fetch(`${API_BASE_URL}/cardapio`);
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(data.message || `Erro HTTP! status: ${response.status}`);
+      throw new Error(errorData.message || `Erro HTTP! status: ${response.status}`);
     }
     const data = await response.json();
     let cardapioItens = data.data;
@@ -196,51 +196,69 @@ function atualizarPedido() {
   totalElement.textContent = totalPedidoAtual.toFixed(2);
 }
 
-async function carregarReservasAtivasParaMesaData() {
-  const numeroMesa = parseInt(document.getElementById("numero_mesa").value);
-  const dataReserva = document.getElementById("data_reserva_pedido").value;
-  const selectHora = document.getElementById("hora_reserva_pedido");
 
-  if (!numeroMesa || !dataReserva) {
-    if (selectHora) selectHora.innerHTML = '<option value="">Selecione mesa e data</option>';
-    reservasAtivasDisponiveis = [];
-    horaReservaSelecionada = "";
-    return;
-  }
+async function carregarReservasAtivasParaSelecao() {
+  const numeroMesaFiltro = document.getElementById("filtro_mesa_reserva").value;
+  const dataReservaFiltro = document.getElementById("filtro_data_reserva").value;
+  const selectReserva = document.getElementById("id_reserva_selecionada");
+  selectReserva.innerHTML = '<option value="">Filtrar mesa e data para ver reservas</option>'; // Limpa e adiciona opção padrão
+
+  let url = `${API_BASE_URL}/reservas/search?status=Ativa`;
+  if (numeroMesaFiltro) url += `&num_mesa=${numeroMesaFiltro}`;
+  if (dataReservaFiltro) url += `&data_reserva=${dataReservaFiltro}`;
 
   try {
-    const response = await fetch(`${API_BASE_URL}/reservas/search?num_mesa=${numeroMesa}&data_reserva=${dataReserva}&status=Ativa`);
+    const response = await fetch(url);
     const data = await response.json();
-    reservasAtivasDisponiveis = data.data || [];
+    const reservasAtivas = data.data || [];
 
-    if (!selectHora) return;
-
-    selectHora.innerHTML = "";
-    if (reservasAtivasDisponiveis.length === 0) {
-      selectHora.innerHTML = '<option value="">Nenhuma reserva ativa</option>';
-      horaReservaSelecionada = "";
+    if (reservasAtivas.length === 0 && (numeroMesaFiltro || dataReservaFiltro)) {
+      selectReserva.innerHTML = '<option value="">Nenhuma reserva ativa encontrada com estes filtros</option>';
       return;
+    } else if (reservasAtivas.length === 0) {
+        selectReserva.innerHTML = '<option value="">Nenhuma reserva ativa disponível</option>';
+        return;
     }
 
-    reservasAtivasDisponiveis.forEach(reserva => {
+    reservasAtivas.forEach(reserva => {
       const option = document.createElement("option");
-      option.value = reserva.hora_reserva;
-      option.textContent = reserva.hora_reserva;
-      selectHora.appendChild(option);
+      option.value = reserva.id_reserva;
+      option.textContent = `Mesa ${reserva.num_mesa} - ${reserva.nome_cliente} - ${formatarDataParaExibicao(reserva.data_reserva)} ${reserva.hora_reserva.substring(0,5)}`;
+
+      // Armazenar os dados da reserva nos data-atributos da option
+      option.dataset.nomeGarcom = reserva.nome_garcom || '';
+      option.dataset.nomeCliente = reserva.nome_cliente || '';
+      option.dataset.cpfCliente = reserva.cpf_cliente || '';
+      option.dataset.numMesa = reserva.num_mesa || '';
+      option.dataset.dataReserva = reserva.data_reserva || '';
+      option.dataset.horaReserva = reserva.hora_reserva || '';
+
+      selectReserva.appendChild(option);
     });
 
-    horaReservaSelecionada = reservasAtivasDisponiveis[0].hora_reserva;
-    selectHora.value = horaReservaSelecionada;
+    // Tenta selecionar a primeira opção e disparar o change para preencher os campos ocultos
+    if (reservasAtivas.length > 0) {
+        selectReserva.value = reservasAtivas[0].id_reserva;
+        preencherDadosReservaSelecionada();
+    }
 
-    selectHora.onchange = function () {
-      horaReservaSelecionada = selectHora.value;
-    };
   } catch (error) {
-    console.error("Erro ao buscar reservas ativas:", error);
-    if (selectHora) selectHora.innerHTML = '<option value="">Erro ao buscar reservas</option>';
-    reservasAtivasDisponiveis = [];
-    horaReservaSelecionada = "";
+    console.error("Erro ao carregar reservas ativas para seleção:", error);
+    selectReserva.innerHTML = '<option value="">Erro ao carregar reservas</option>';
   }
+}
+
+function preencherDadosReservaSelecionada() {
+    const selectReserva = document.getElementById("id_reserva_selecionada");
+    const selectedOption = selectReserva.options[selectReserva.selectedIndex];
+
+    // Preenche os campos hidden com os dados da reserva selecionada
+    document.getElementById("nome_garcom_pedido").value = selectedOption.dataset.nomeGarcom || '';
+    document.getElementById("nome_cliente_pedido").value = selectedOption.dataset.nomeCliente || '';
+    document.getElementById("cpf_cliente_pedido").value = selectedOption.dataset.cpfCliente || '';
+    document.getElementById("num_mesa_pedido_oculto").value = selectedOption.dataset.numMesa || '';
+    document.getElementById("data_reserva_pedido_oculto").value = selectedOption.dataset.dataReserva || '';
+    document.getElementById("hora_reserva_pedido_oculto").value = selectedOption.dataset.horaReserva || '';
 }
 
 async function finalizarPedido() {
@@ -250,20 +268,12 @@ async function finalizarPedido() {
     return;
   }
 
-  const numeroMesa = parseInt(document.getElementById("numero_mesa").value);
-  const dataReservaPedido = document.getElementById("data_reserva_pedido").value;
-  const horaReservaPedido = document.getElementById("hora_reserva_pedido") ? document.getElementById("hora_reserva_pedido").value : "";
+  const idReserva = parseInt(document.getElementById("id_reserva_selecionada").value);
+  const nomeGarcom = document.getElementById("nome_garcom_pedido").value;
 
-  if (!numeroMesa || isNaN(numeroMesa)) {
-    alert("Por favor, insira um número de mesa válido.");
-    return;
-  }
-  if (!dataReservaPedido) {
-    alert("Por favor, selecione a data da reserva.");
-    return;
-  }
-  if (!horaReservaPedido) {
-    alert("Por favor, selecione o horário da reserva.");
+
+  if (isNaN(idReserva) || idReserva === 0) {
+    alert("Por favor, selecione uma reserva válida.");
     return;
   }
   if (!itensPedidoAtuais.length) {
@@ -272,13 +282,14 @@ async function finalizarPedido() {
   }
 
   const pedidoData = {
-    numero_mesa: numeroMesa,
-    data_reserva: dataReservaPedido,
-    hora_reserva: horaReservaPedido,
+    id_reserva: idReserva,
     itens: itensPedidoAtuais.map(item => ({
       id_item_cardapio: item.id_item_cardapio,
       quantidade: item.quantidade
     })),
+    nome_garcom: nomeGarcom, // Adiciona nome_garcom no payload
+    // Não é mais necessário enviar numero_mesa, data_reserva, hora_reserva, nome_cliente, cpf_cliente aqui
+    // O backend buscará esses dados via id_reserva
   };
 
   let url = `${API_BASE_URL}/pedidos`;
@@ -291,8 +302,9 @@ async function finalizarPedido() {
     method = "PUT";
     successMessage = "Pedido atualizado com sucesso!";
     errorMessage = "Erro ao atualizar pedido:";
+    // Ao editar, pode ser que o total e o status sejam relevantes para enviar
     pedidoData.total = totalPedidoAtual;
-    pedidoData.status = "Aberto";
+    pedidoData.status = "Aberto"; // Ou o status que estiver sendo editado
   }
 
   try {
@@ -311,14 +323,15 @@ async function finalizarPedido() {
     }
 
     alert(successMessage);
-    document.getElementById("numero_mesa").value = "";
-    document.getElementById("data_reserva_pedido").value = "";
-    document.getElementById("hora_reserva_pedido").innerHTML = '<option value="">Selecione mesa e data</option>';
+    document.getElementById("filtro_mesa_reserva").value = "";
+    document.getElementById("filtro_data_reserva").value = "";
+    document.getElementById("id_reserva_selecionada").innerHTML = '<option value="">Selecione mesa e data</option>';
     itensPedidoAtuais = [];
     totalPedidoAtual = 0;
     atualizarPedido();
     idPedidoEditando = null;
     listarPedidos();
+    carregarReservasAtivasParaSelecao(); // Recarrega o seletor de reservas
   } catch (error) {
     console.error(errorMessage, error);
     alert(`${errorMessage} ${error.message}`);
@@ -334,8 +347,8 @@ async function listarPedidos() {
   const filtroMesa = document.getElementById("filtroMesa")?.value || "";
 
   let url = `${API_BASE_URL}/pedidos/search?`;
-  if (filtroData) url += `data_reserva=${filtroData}&`;
-  if (filtroMesa) url += `numero_mesa=${filtroMesa}&`;
+  if (filtroData) url += `data_reserva=${filtroData}&`; // O filtro agora no DAO já é na RESERVA
+  if (filtroMesa) url += `numero_mesa=${filtroMesa}&`; // O filtro agora no DAO já é na RESERVA
   url = url.slice(0, -1);
 
   try {
@@ -373,13 +386,8 @@ async function listarPedidos() {
       const row = `
         <tr>
           <td>${pedido.id_pedido}</td>
-          <td>${pedido.numero_mesa}</td>
-          <td>${pedido.nome_garcom}</td>
-          <td>${pedido.nome_cliente}</td>
-          <td>${pedido.cpf_cliente}</td>
-          <td>${dataFormatada}</td>
-          <td>${horaFormatada}</td>
-          <td>R$ ${parseFloat(pedido.total).toFixed(2)}</td>
+          <td>${pedido.num_mesa}</td> <td>${pedido.nome_garcom}</td>
+          <td>${pedido.nome_cliente}</td> <td>${pedido.cpf_cliente}</td>   <td>${dataFormatada}</td>      <td>${horaFormatada}</td>      <td>R$ ${parseFloat(pedido.total).toFixed(2)}</td>
           <td>${pedido.status}</td>
           <td ${!(usuario.tipo === "admin" || usuario.tipo === "garcom") ? 'style="display:none;"' : ''}>
             <div class="botoes-acao">
@@ -412,10 +420,14 @@ async function editarPedido(id) {
     const pedidoParaEditar = data.data;
 
     if (pedidoParaEditar) {
-      document.getElementById("numero_mesa").value = pedidoParaEditar.numero_mesa;
-      document.getElementById("data_reserva_pedido").value = pedidoParaEditar.data_reserva ? new Date(pedidoParaEditar.data_reserva).toISOString().split('T')[0] : '';
-      await carregarReservasAtivasParaMesaData();
-      document.getElementById("hora_reserva_pedido").value = pedidoParaEditar.hora_reserva || "";
+      // Preencher os filtros de reserva para ajudar a encontrar a reserva correta
+      document.getElementById("filtro_mesa_reserva").value = pedidoParaEditar.num_mesa;
+      document.getElementById("filtro_data_reserva").value = pedidoParaEditar.data_reserva ? new Date(pedidoParaEditar.data_reserva).toISOString().split('T')[0] : '';
+
+      // Carregar e selecionar a reserva no dropdown
+      await carregarReservasAtivasParaSelecao();
+      document.getElementById("id_reserva_selecionada").value = pedidoParaEditar.id_reserva;
+      preencherDadosReservaSelecionada(); // Preenche os hidden fields com os dados da reserva selecionada
 
       itensPedidoAtuais = pedidoParaEditar.itens.map(item => ({
         id_item_cardapio: item.id_item_cardapio,
