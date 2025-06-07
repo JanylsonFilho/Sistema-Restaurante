@@ -5,6 +5,10 @@ const mesaDAO = require("../dao/mesaDAO");
 const pedidoDAO = require("../dao/pedidoDAO");
 const ReservaModel = require("../models/reservaModel");
 
+// Defina os horários de funcionamento do restaurante
+const HORARIO_ABERTURA = "12:00"; // Meio-dia
+const HORARIO_FECHAMENTO = "22:00"; // 22 horas
+
 class reservaService {
   async getAllReservas() {
     try {
@@ -33,11 +37,19 @@ class reservaService {
       if (errors.length > 0) {
         throw new Error(`Dados inválidos: ${errors.join(", ")}`);
       }
+      if (reservaData.hora_reserva < HORARIO_ABERTURA || reservaData.hora_reserva > HORARIO_FECHAMENTO) {
+        throw new Error(`Reservas só podem ser feitas entre ${HORARIO_ABERTURA} e ${HORARIO_FECHAMENTO}.`);
+      }
 
       // Buscar cliente por CPF
       const cliente = await clienteDAO.findByCPF(reservaData.cpf_cliente);
       if (!cliente) {
         throw new Error("Cliente não encontrado");
+      }
+      // limite de 3 reservas por cpf
+      const activeReservationsCount = await reservaDAO.countActiveReservationsByCpf(reservaData.cpf_cliente); 
+      if (activeReservationsCount >= 3) {
+        throw new Error("O cliente já possui o número máximo de 3 reservas ativas.");
       }
 
       // Buscar mesa por número
@@ -98,6 +110,10 @@ class reservaService {
       const errors = ReservaModel.validate(reservaData);
       if (errors.length > 0) {
         throw new Error(`Dados inválidos: ${errors.join(", ")}`);
+      }
+      
+      if (reservaData.hora_reserva < HORARIO_ABERTURA || reservaData.hora_reserva > HORARIO_FECHAMENTO) {
+        throw new Error(`Reservas só podem ser atualizadas para horários entre ${HORARIO_ABERTURA} e ${HORARIO_FECHAMENTO}.`);
       }
 
       // Buscar cliente por CPF

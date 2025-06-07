@@ -153,6 +153,14 @@ class reservaDAO {
     );
     return rows;
   }
+
+    async countActiveReservationsByCpf(cpf_cliente) {
+    const [rows] = await pool.execute(
+      "SELECT COUNT(*) as total FROM Reserva WHERE cpf_cliente = ? AND status = 'Ativa'",
+      [cpf_cliente]
+    );
+    return rows[0].total;
+  }
 }
 
 module.exports = new reservaDAO();
