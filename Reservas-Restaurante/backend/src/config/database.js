@@ -1,5 +1,4 @@
 
-// terminar as configuraçoes quando o mysql estiver pronto
 const mysql = require("mysql2/promise")
 
 const dbConfig = {

@@ -7,7 +7,7 @@ class clienteModel {
     this.telefone = telefone
   }
 
-  // Validações
+  
   static validate(clienteData) {
     const errors = []
 
@@ -31,7 +31,7 @@ class clienteModel {
   }
 
   static isValidCPF(cpf) {
-    // Implementar validação de CPF
+    
     return cpf && cpf.length >= 11
   }
 

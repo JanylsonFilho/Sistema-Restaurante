@@ -1,11 +1,10 @@
-// backend/src/models/pedidoModel.js (ATUALIZADO)
 class pedidoModel {
   constructor(
     id_pedido,
-    id_reserva, // Nova propriedade
+    id_reserva, 
     total,
     status,
-    nome_garcom // Mantido
+    nome_garcom 
   ) {
     this.id_pedido = id_pedido;
     this.id_reserva = id_reserva;
@@ -21,8 +20,7 @@ class pedidoModel {
       errors.push("ID da reserva é obrigatório");
     }
 
-    // Você pode adicionar validações para 'total', 'status', 'nome_garcom' se desejar
-    // Exemplo:
+    
     if (pedidoData.total !== undefined && (isNaN(pedidoData.total) || pedidoData.total < 0)) {
         errors.push("Total do pedido inválido.");
     }

@@ -1,9 +1,9 @@
-// backend/src/dao/pedidoDAO.js (ATUALIZADO)
+
 const { pool } = require("../config/database");
 
 class pedidoDAO {
   async findAll() {
-    // Agora faz JOIN com Reserva para obter detalhes do cliente e da mesa
+    
     const [rows] = await pool.execute(`
       SELECT
         p.id_pedido,
@@ -44,7 +44,7 @@ class pedidoDAO {
   }
 
   async create(pedido) {
-    // Apenas id_reserva, total, status e nome_garcom são inseridos diretamente
+ 
     const { id_reserva, total, status, nome_garcom } = pedido;
     const [result] = await pool.execute(
       `INSERT INTO Pedido (id_reserva, total, status, nome_garcom)
@@ -55,7 +55,7 @@ class pedidoDAO {
   }
 
   async update(id, pedido) {
-    // Apenas id_reserva, total, status e nome_garcom são atualizados diretamente
+    
     const { id_reserva, total, status, nome_garcom } = pedido;
     const [result] = await pool.execute(
       `UPDATE Pedido SET id_reserva = ?, total = ?, status = ?, nome_garcom = ?
@@ -111,19 +111,19 @@ class pedidoDAO {
       query += " AND r.id_reserva = ?";
       params.push(filters.id_reserva);
     }
-    if (filters.data_reserva) { // Agora filtra pela data da RESERVA
+    if (filters.data_reserva) { 
       query += " AND r.data_reserva = ?";
       params.push(filters.data_reserva);
     }
-    if (filters.numero_mesa) { // Agora filtra pelo número da MESA da RESERVA
+    if (filters.numero_mesa) { 
       query += " AND r.num_mesa = ?";
       params.push(filters.numero_mesa);
     }
-    if (filters.status) { // Status do PEDIDO
+    if (filters.status) { 
       query += " AND p.status = ?";
       params.push(filters.status);
     }
-    if (filters.nome_cliente) { // Nome do CLIENTE da RESERVA
+    if (filters.nome_cliente) { 
       query += " AND r.nome_cliente LIKE ?";
       params.push(`%${filters.nome_cliente}%`);
     }

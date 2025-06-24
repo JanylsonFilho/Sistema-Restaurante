@@ -1,4 +1,3 @@
-// backend/src/controllers/reservaController.js (ATUALIZADO)
 const reservaService = require("../services/reservaService");
 
 class reservaController {
@@ -48,7 +47,7 @@ class reservaController {
         error.message.includes("inválidos") ||
         error.message.includes("não encontrado") ||
         error.message.includes("excede") ||
-        error.message.includes("Já existe uma reserva ativa para esta mesa nesta data e horário.") // Mensagem mais específica
+        error.message.includes("Já existe uma reserva ativa para esta mesa nesta data e horário.") 
         ? 400
         : 500;
       res.status(status).json({
@@ -73,7 +72,7 @@ class reservaController {
         : error.message.includes("inválidos") ||
             error.message.includes("Apenas reservas") ||
             error.message.includes("excede") ||
-            error.message.includes("já possui uma reserva ativa nesta data e horário") // Mensagem mais específica
+            error.message.includes("já possui uma reserva ativa nesta data e horário") 
         ? 400
         : 500;
       res.status(status).json({

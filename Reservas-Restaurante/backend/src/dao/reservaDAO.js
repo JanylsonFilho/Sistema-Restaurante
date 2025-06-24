@@ -1,4 +1,4 @@
-// backend/src/dao/reservaDAO.js (ATUALIZADO)
+
 const { pool } = require("../config/database");
 
 class reservaDAO {
@@ -83,29 +83,7 @@ class reservaDAO {
     return rows;
   }
 
-  // Este método pode ser removido, pois o update genérico da reserva no service já cobre isso
-  /*
-  async updateStatusByMesaAndData(num_mesa, data_reserva, status) {
-    const [result] = await pool.execute("UPDATE Reserva SET status = ? WHERE num_mesa = ? AND data_reserva = ?", [
-      status,
-      num_mesa,
-      data_reserva,
-    ]);
-    return result.affectedRows > 0;
-  }
-  */
-
-  // Este método pode ser removido ou alterado para usar id_reserva se for o caso
-  // O service de pedido agora fará um `update` completo na reserva
-  /*
-  async updateStatusByMesaDataHora(num_mesa, data_reserva, hora_reserva, status) {
-    const [result] = await pool.execute(
-      "UPDATE Reserva SET status = ? WHERE num_mesa = ? AND data_reserva = ? AND hora_reserva = ?",
-      [status, num_mesa, data_reserva, hora_reserva],
-    );
-    return result.affectedRows > 0;
-  }
-  */
+ 
 
   async search(filters) {
     let query = "SELECT * FROM Reserva WHERE 1=1";

@@ -1,4 +1,3 @@
-// backend/src/dao/pagamentoDAO.js (CORRIGIDO PARA numero_mesa)
 const { pool } = require("../config/database");
 
 class pagamentoDAO {
@@ -62,12 +61,12 @@ class pagamentoDAO {
         pag.id_pedido,
         pag.valor_total,
         pag.status,
-        ped.nome_garcom,     -- Nome do garçom vem do Pedido
-        r.num_mesa,          -- NUMERO DA MESA VEM DA RESERVA (corrigido aqui)
-        r.nome_cliente,      -- Nome do cliente vem da Reserva
-        r.cpf_cliente,       -- CPF do cliente vem da Reserva
-        r.data_reserva,      -- Data da reserva vem da Reserva
-        r.hora_reserva       -- Hora da reserva vem da Reserva
+        ped.nome_garcom,     
+        r.num_mesa,         
+        r.nome_cliente,      
+        r.cpf_cliente,      
+        r.data_reserva,      
+        r.hora_reserva      
       FROM Pagamento pag
       INNER JOIN Pedido ped ON pag.id_pedido = ped.id_pedido
       INNER JOIN Reserva r ON ped.id_reserva = r.id_reserva
@@ -84,12 +83,12 @@ class pagamentoDAO {
         pag.id_pedido,
         pag.valor_total,
         pag.status,
-        ped.nome_garcom,     -- Nome do garçom vem do Pedido
-        r.num_mesa,          -- NUMERO DA MESA VEM DA RESERVA (corrigido aqui)
-        r.nome_cliente,      -- Nome do cliente vem da Reserva
-        r.cpf_cliente,       -- CPF do cliente vem da Reserva
-        r.data_reserva,      -- Data da reserva vem da Reserva
-        r.hora_reserva       -- Hora da reserva vem da Reserva
+        ped.nome_garcom,     
+        r.num_mesa,          
+        r.nome_cliente,     
+        r.cpf_cliente,     
+        r.data_reserva,    
+        r.hora_reserva      
       FROM Pagamento pag
       INNER JOIN Pedido ped ON pag.id_pedido = ped.id_pedido
       INNER JOIN Reserva r ON ped.id_reserva = r.id_reserva
@@ -97,22 +96,22 @@ class pagamentoDAO {
     `;
     const params = [];
 
-    if (filters.data_reserva) { // Filtra pela data da RESERVA
+    if (filters.data_reserva) { 
       query += " AND r.data_reserva = ?";
       params.push(filters.data_reserva);
     }
 
-    if (filters.status) { // Status do PAGAMENTO
+    if (filters.status) { 
       query += " AND pag.status = ?";
       params.push(filters.status);
     }
 
-    if (filters.numero_mesa) { // Filtra pelo número da MESA da RESERVA
+    if (filters.numero_mesa) { 
       query += " AND r.num_mesa = ?";
       params.push(filters.numero_mesa);
     }
 
-    if (filters.nome_cliente) { // Nome do CLIENTE da RESERVA
+    if (filters.nome_cliente) { 
       query += " AND r.nome_cliente LIKE ?";
       params.push(`%${filters.nome_cliente}%`);
     }
@@ -136,7 +135,7 @@ class pagamentoDAO {
     `;
     const params = [];
 
-    if (data_reserva) { // Filtra pela data da RESERVA
+    if (data_reserva) { 
       query += " WHERE r.data_reserva = ?";
       params.push(data_reserva);
     }
